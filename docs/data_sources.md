@@ -1,0 +1,37 @@
+# Data sources
+
+All sources are public, free, and require no DUA.
+
+## Medicare Part D Prescribers — by Provider and Drug
+
+- **Year:** 2023 (data year), released April 2025
+- **Landing page:** [data.cms.gov](https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug)
+- **Direct CSV:** `https://data.cms.gov/sites/default/files/2025-04/0d5915ce-002c-4d87-bde8-24ffb08bb6cc/MUP_DPR_RY25_P04_V10_DY23_NPIBN.csv`
+- **Size:** ~3.6 GB, ~25 M rows
+- **Grain:** one row per (NPI × drug × year)
+- **License:** Public domain (US Government Work)
+- **Notes:** CMS suppresses cells with <11 beneficiaries — denoted by `*` or empty values; the COPY INTO file format treats these as nulls, and staging models drop suppressed rows.
+
+## Medicare Physician & Other Practitioners — by Provider and Service
+
+- **Year:** 2023 (data year), released April 2025
+- **Landing page:** [data.cms.gov](https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service)
+- **Direct CSV:** `https://data.cms.gov/sites/default/files/2025-04/e3f823f8-db5b-4cc7-ba04-e7ae92b99757/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv`
+- **Size:** ~1.5 GB, ~10 M rows
+- **Grain:** one row per (NPI × HCPCS × place_of_service × year)
+- **License:** Public domain (US Government Work)
+
+## NPPES NPI Registry — Monthly Full Dissemination V2
+
+- **Snapshot:** April 2026
+- **Landing page:** [download.cms.gov/nppes](https://download.cms.gov/nppes/NPI_Files.html)
+- **Direct ZIP:** `https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2026_V2.zip`
+- **Size:** 1.0 GB compressed, 11.6 GB uncompressed
+- **Main file:** `npidata_pfile_*.csv` (11.4 GB) — provider records with 300+ columns
+- **Grain:** one row per NPI
+- **License:** Public domain (US Government Work)
+- **Pre-filtering:** We use `setup/02_filter_nppes.py` (DuckDB) to drop to ~14 columns and Entity Type Code = 1 (individual providers, the project ignores org NPIs). Cuts the file ~8x before upload.
+
+## Reproducing the load
+
+The load is a 4-step linear pipeline; see [`../setup/README.md`](../setup/README.md) for the run order.
