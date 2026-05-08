@@ -3,34 +3,44 @@ version: 2
 models:
   - name: stg_part_d__prescriber_drug
     description: |
-      Cleaned Part D prescriber-drug-year grain. Casts numeric cells, attaches
-      a brand-vs-generic flag using the CMS convention (brand_name = generic_name → GENERIC),
-      and drops fully-suppressed rows (CMS suppresses cells with <11 beneficiaries).
+      Cleaned Part D prescriber-drug grain. Casts numeric cells, derives a
+      brand-vs-generic flag (CMS convention: brand_name = generic_name → generic),
+      and surfaces explicit suppression semantics so marts can decide whether to
+      include suppressed cells. CMS suppresses cells with <11 beneficiaries.
     columns:
       - name: npi
         description: National Provider Identifier of the prescriber.
         tests:
           - not_null
-      - name: brand_or_generic
-        description: BRAND or GENERIC, derived per CMS convention.
+      - name: drug_kind
+        description: brand or generic, derived per CMS convention.
         tests:
           - accepted_values:
               arguments:
-                values: ['BRAND', 'GENERIC']
+                values: ['brand', 'generic']
               config:
-                where: "brand_or_generic is not null"
+                where: "drug_kind is not null"
       - name: total_claims
-        description: Total number of Part D claims for this prescriber-drug.
+        description: Total Part D claims for this prescriber-drug.
         tests:
           - not_null
       - name: total_drug_cost
         description: Total drug cost (USD) across all beneficiaries for this prescriber-drug.
+      - name: is_beneficiary_count_suppressed
+        description: True when CMS suppressed total_beneficiaries (<11 benes for the cell).
+        tests:
+          - not_null
+      - name: data_year
+        description: Calendar year the row covers (currently 2023 for the only loaded vintage).
+        tests:
+          - not_null
 
   - name: stg_part_b__provider_service
     description: |
       Cleaned Part B service-grain rows (one per NPI × HCPCS × place-of-service).
-      Filtered to individual rendering providers (entity code 'I') — organizational
-      practitioners are excluded as they don't fit the specialty/peer-group analysis.
+      Carries both individual ('I') and organizational ('O') rendering providers —
+      filtering happens in the intermediate layer where peer-group analysis is
+      defined.
     columns:
       - name: npi
         description: National Provider Identifier of the rendering provider.
@@ -41,30 +51,57 @@ models:
         tests:
           - not_null
       - name: provider_entity_code
-        description: I = Individual provider (only value retained in this view).
+        description: I = Individual, O = Organization.
         tests:
           - accepted_values:
               arguments:
-                values: ['I']
-      - name: avg_medicare_payment
+                values: ['I', 'O']
+      - name: avg_medicare_payment_amount
         description: Average Medicare payment amount per service line for this NPI × HCPCS × POS.
+      - name: data_year
+        description: Calendar year the row covers.
+        tests:
+          - not_null
 
   - name: stg_nppes__providers
     description: |
-      One row per individual provider (Entity Type 1) with practice geography
-      and primary taxonomy code. Pre-filtered locally with DuckDB before load —
-      see setup/02_filter_nppes.py.
+      Cleaned individual-provider records from the NPPES monthly snapshot.
+      Pre-filtered locally (entity_type_code='1', non-deactivated) — see
+      `setup/02_filter_nppes.py`. Adds a coarse specialty rollup off the
+      first 3 chars of the NUCC taxonomy code.
     columns:
       - name: npi
         description: National Provider Identifier.
         tests:
           - unique
           - not_null
+      - name: entity_type_code
+        description: Always '1' here (individuals only).
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['1']
       - name: primary_taxonomy_code
         description: |
           NUCC taxonomy code for the provider's primary specialty.
-          Mapped to a specialty rollup in the intermediate layer via a seed CSV.
+          Full hierarchy at nucc.org.
+      - name: specialty_grouping
+        description: |
+          Coarse rollup off the first 3 chars of the taxonomy code:
+          Physician (207/208), Advanced Practice (363), Supplier (333),
+          Laboratory (291), Group (193), Other Service Provider (171/174),
+          Other (everything else).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Physician
+                  - Advanced Practice
+                  - Supplier
+                  - Laboratory
+                  - Group
+                  - Other Service Provider
+                  - Other
       - name: practice_state
         description: USPS abbreviation for the provider's primary practice location.
-      - name: enumeration_date
-        description: Date the NPI was first issued. Used downstream for tenure analysis.
