@@ -1,0 +1,4 @@
+# Python 3.11+ required (dbt-core 1.11 dropped 3.9 support).
+# Pin top-level packages; transitive deps are resolved by pip.
+dbt-core==1.11.9
+dbt-snowflake==1.11.4

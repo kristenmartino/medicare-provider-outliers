@@ -1,0 +1,28 @@
+# Copy this file to ~/.dbt/profiles.yml and fill in your Snowflake credentials.
+# NEVER commit your real profiles.yml — it lives outside the repo on purpose.
+
+medicare:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+
+      # Account locator: from your Snowsight URL, e.g.
+      # https://app.snowflake.com/us-east-1/jrc82992/  →  account: jrc82992.us-east-1
+      account: <ACCOUNT_LOCATOR>.<REGION>
+
+      # Snowflake login user (NOT your display name)
+      user: <SNOWFLAKE_USERNAME>
+
+      # Key-pair authentication — required for programmatic access on accounts
+      # with MFA enforcement (Snowflake's default since late 2024).
+      # See docs/auth_setup.md for the keygen + ALTER USER flow.
+      private_key_path: <ABSOLUTE_PATH_TO_PRIVATE_KEY_P8>
+
+      role: ANALYST
+      warehouse: DBT_XS_WH
+      database: ANALYTICS
+      schema: dbt_dev          # personal sandbox schema; dbt creates layer schemas as <schema>_staging etc.
+
+      threads: 4
+      client_session_keep_alive: false

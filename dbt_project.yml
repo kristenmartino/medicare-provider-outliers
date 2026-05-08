@@ -1,0 +1,39 @@
+name: 'medicare'
+version: '0.1.0'
+config-version: 2
+
+profile: 'medicare'
+
+# Standard dbt directory layout
+model-paths:    ["models"]
+seed-paths:     ["seeds"]
+test-paths:     ["tests"]
+macro-paths:    ["macros"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+# Materialization defaults — staging as views (cheap), heavy layers as tables.
+# Each layer lives in its own schema inside the ANALYTICS database, so the
+# warehouse landscape reads cleanly: ANALYTICS.STAGING.*, ANALYTICS.MARTS.*, etc.
+models:
+  medicare:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+# Seeds land in the analytics seeds schema
+seeds:
+  medicare:
+    +schema: seeds

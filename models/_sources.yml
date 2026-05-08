@@ -1,0 +1,44 @@
+version: 2
+
+sources:
+  - name: cms
+    description: |
+      CMS public data sources for the provider-outlier project.
+      Tables are populated by `COPY INTO` from CMS-published CSV files;
+      see `setup/02_load_cms_data.md` for the load procedure.
+    database: RAW
+    schema: CMS
+
+    # Freshness windows are loose — these are annual datasets (Part D, Part B)
+    # plus a monthly NPPES snapshot. We won't fail builds on freshness, but
+    # we do want `dbt source freshness` to surface stale loads.
+    loaded_at_field: _loaded_at
+
+    tables:
+      - name: part_d_prescribers
+        description: |
+          Medicare Part D Prescriber by Provider and Drug. Annual file.
+          One row per (NPI × drug × year). Cells with <11 beneficiaries
+          are suppressed by CMS — those rows are dropped in staging.
+        identifier: PART_D_PRESCRIBERS
+        freshness:
+          warn_after: {count: 18, period: month}
+          error_after: {count: 24, period: month}
+
+      - name: part_b_services
+        description: |
+          Medicare Physician & Other Practitioners — by Provider and Service.
+          Annual file. One row per (NPI × HCPCS × place_of_service × year).
+        identifier: PART_B_SERVICES
+        freshness:
+          warn_after: {count: 18, period: month}
+          error_after: {count: 24, period: month}
+
+      - name: nppes_npi
+        description: |
+          NPPES NPI Registry — monthly full-data dissemination snapshot,
+          pre-filtered locally to the ~15 columns we actually use.
+        identifier: NPPES_NPI
+        freshness:
+          warn_after: {count: 2, period: month}
+          error_after: {count: 6, period: month}

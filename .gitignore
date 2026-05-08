@@ -1,0 +1,33 @@
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+.python-version
+
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Local profiles — never commit credentials
+profiles.yml
+.dbt/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local data dumps (CMS files are huge — never commit)
+data/
+*.csv
+*.csv.gz
+*.parquet
+!seeds/**/*.csv
+
+# Secrets
+.env
+.env.*
+!.env.example
