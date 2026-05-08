@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: int_part_d__provider_annual
+    description: |
+      Part D rolled up from (NPI × drug) to (NPI × year). Adds brand-vs-generic
+      share metrics and average cost per claim. Suppressed-beneficiary rows
+      still contribute to claim/cost totals — the suppressed value is the
+      beneficiary count itself, not the volume metrics.
+    columns:
+      - name: npi
+        tests:
+          - unique
+          - not_null
+      - name: total_drug_cost
+        description: Total Part D drug cost (USD) across all the prescriber's drugs.
+      - name: brand_cost_share
+        description: Share of total drug cost attributable to brand-name drugs (0–1).
+      - name: avg_cost_per_claim
+        description: total_drug_cost / total_claims.
+
+  - name: int_part_b__provider_annual
+    description: |
+      Part B rolled up from (NPI × HCPCS × POS) to (NPI × year). Filtered to
+      individual rendering providers. Cost totals are reconstructed from
+      per-service averages × total_services, since CMS publishes averages.
+    columns:
+      - name: npi
+        tests:
+          - unique
+          - not_null
+      - name: total_medicare_payment
+        description: Reconstructed total Medicare payment (avg × services, summed).
+      - name: total_services
+        description: Total Part B services rendered.
+
+  - name: int_provider__profile
+    description: |
+      Unified provider directory — one row per NPI present in any of the three
+      sources. Best-available specialty and state via a fallback chain (CMS
+      Part D → Part B → NPPES). Coverage flags indicate which sources the
+      provider appears in.
+    columns:
+      - name: npi
+        tests:
+          - unique
+          - not_null
+      - name: specialty
+        description: Best-known specialty (CMS-published if present, NPPES grouping otherwise).
+      - name: state
+        description: Best-known practice state.
+      - name: is_in_nppes
+        tests:
+          - not_null
+      - name: is_part_d_prescriber
+        tests:
+          - not_null
+      - name: is_part_b_provider
+        tests:
+          - not_null
+
+  - name: int_provider__peer_group_stats
+    description: |
+      Peer-group (specialty × state) statistics for the metrics that drive
+      outlier detection: drug cost, claims, brand share, cost-per-claim,
+      Medicare payment, services. Filters out peer groups with n < 30 to
+      avoid indefensible flags on tiny groups.
+    columns:
+      - name: specialty
+        tests:
+          - not_null
+      - name: state
+        tests:
+          - not_null
+      - name: n_providers
+        description: Number of providers in this peer group (always ≥ 30).
+        tests:
+          - not_null

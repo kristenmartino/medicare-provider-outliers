@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: dim_provider
+    description: |
+      Provider dimension — one row per NPI seen in any source. Carries best-known
+      specialty, state, and per-source coverage flags. Pass-through of
+      int_provider__profile with display-friendly column names.
+    columns:
+      - name: npi
+        description: National Provider Identifier — the join key for everything else.
+        tests:
+          - unique
+          - not_null
+      - name: specialty
+        description: Best-available specialty (CMS-published preferred, NPPES rollup fallback).
+      - name: state
+        description: Best-available USPS state abbreviation for the practice location.
+
+  - name: fct_part_d_provider_year
+    description: |
+      Part D fact — one row per (NPI × year) with claim, fill, cost, and
+      brand-vs-generic share metrics aggregated across the prescriber's drugs.
+    columns:
+      - name: npi
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_provider')
+                field: npi
+      - name: total_drug_cost
+        description: Sum of total_drug_cost across all of the prescriber's drugs (USD).
+      - name: brand_cost_share
+        description: 0–1 share of total drug cost from brand-name drugs.
+      - name: avg_cost_per_claim
+        description: total_drug_cost / total_claims.
+
+  - name: fct_part_b_provider_year
+    description: |
+      Part B fact — one row per (NPI × year) with service volume and
+      reconstructed cost totals (per-service averages × total_services, summed).
+    columns:
+      - name: npi
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_provider')
+                field: npi
+      - name: total_services
+        description: Sum of services rendered across all HCPCS × place_of_service combos.
+      - name: total_medicare_payment
+        description: Reconstructed total Medicare payment (USD).
+
+  - name: mart_provider_outliers
+    description: |
+      Headline mart. Per provider, flags whether their cost or volume metrics
+      fall outside (specialty × state) peer-group expectations. Both classical
+      z-score (mean/stddev) and modified z-score (median/MAD) are computed —
+      MAD-based is the default narrative since Medicare cost distributions
+      are heavily right-skewed.
+
+      Thresholds: |z| ≥ 2.0, |modified-z| ≥ 3.5 (Iglewicz & Hoaglin convention).
+      Peer groups with fewer than 30 providers are excluded upstream.
+    columns:
+      - name: npi
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_provider')
+                field: npi
+      - name: specialty
+        tests:
+          - not_null
+      - name: state
+        tests:
+          - not_null
+      - name: peer_group_n
+        description: Number of providers in this NPI's peer group (always ≥ 30).
+        tests:
+          - not_null
+      - name: is_outlier_any_mad
+        description: |
+          True if ANY metric (drug cost, claims, brand share, cost/claim,
+          Part B payment, Part B services) flags via the MAD method.
+        tests:
+          - not_null
+      - name: is_outlier_any_zscore
+        description: True if any metric flags via classical z-score.
+        tests:
+          - not_null
