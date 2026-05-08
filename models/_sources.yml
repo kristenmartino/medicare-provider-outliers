@@ -5,7 +5,7 @@ sources:
     description: |
       CMS public data sources for the provider-outlier project.
       Tables are populated by `COPY INTO` from CMS-published CSV files;
-      see `setup/02_load_cms_data.md` for the load procedure.
+      see `setup/03_load_to_snowflake.py` for the load procedure.
     database: RAW
     schema: CMS
 
@@ -21,24 +21,27 @@ sources:
           One row per (NPI × drug × year). Cells with <11 beneficiaries
           are suppressed by CMS — those rows are dropped in staging.
         identifier: PART_D_PRESCRIBERS
-        freshness:
-          warn_after: {count: 18, period: month}
-          error_after: {count: 24, period: month}
+        config:
+          freshness:
+            warn_after: {count: 540, period: day}
+            error_after: {count: 730, period: day}
 
       - name: part_b_services
         description: |
           Medicare Physician & Other Practitioners — by Provider and Service.
           Annual file. One row per (NPI × HCPCS × place_of_service × year).
         identifier: PART_B_SERVICES
-        freshness:
-          warn_after: {count: 18, period: month}
-          error_after: {count: 24, period: month}
+        config:
+          freshness:
+            warn_after: {count: 540, period: day}
+            error_after: {count: 730, period: day}
 
       - name: nppes_npi
         description: |
           NPPES NPI Registry — monthly full-data dissemination snapshot,
           pre-filtered locally to the ~15 columns we actually use.
         identifier: NPPES_NPI
-        freshness:
-          warn_after: {count: 2, period: month}
-          error_after: {count: 6, period: month}
+        config:
+          freshness:
+            warn_after: {count: 60, period: day}
+            error_after: {count: 180, period: day}

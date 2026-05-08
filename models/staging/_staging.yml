@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: stg_part_d__prescriber_drug
+    description: |
+      Cleaned Part D prescriber-drug-year grain. Casts numeric cells, attaches
+      a brand-vs-generic flag using the CMS convention (brand_name = generic_name → GENERIC),
+      and drops fully-suppressed rows (CMS suppresses cells with <11 beneficiaries).
+    columns:
+      - name: npi
+        description: National Provider Identifier of the prescriber.
+        tests:
+          - not_null
+      - name: brand_or_generic
+        description: BRAND or GENERIC, derived per CMS convention.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['BRAND', 'GENERIC']
+              config:
+                where: "brand_or_generic is not null"
+      - name: total_claims
+        description: Total number of Part D claims for this prescriber-drug.
+        tests:
+          - not_null
+      - name: total_drug_cost
+        description: Total drug cost (USD) across all beneficiaries for this prescriber-drug.
+
+  - name: stg_part_b__provider_service
+    description: |
+      Cleaned Part B service-grain rows (one per NPI × HCPCS × place-of-service).
+      Filtered to individual rendering providers (entity code 'I') — organizational
+      practitioners are excluded as they don't fit the specialty/peer-group analysis.
+    columns:
+      - name: npi
+        description: National Provider Identifier of the rendering provider.
+        tests:
+          - not_null
+      - name: hcpcs_code
+        description: HCPCS procedure code.
+        tests:
+          - not_null
+      - name: provider_entity_code
+        description: I = Individual provider (only value retained in this view).
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['I']
+      - name: avg_medicare_payment
+        description: Average Medicare payment amount per service line for this NPI × HCPCS × POS.
+
+  - name: stg_nppes__providers
+    description: |
+      One row per individual provider (Entity Type 1) with practice geography
+      and primary taxonomy code. Pre-filtered locally with DuckDB before load —
+      see setup/02_filter_nppes.py.
+    columns:
+      - name: npi
+        description: National Provider Identifier.
+        tests:
+          - unique
+          - not_null
+      - name: primary_taxonomy_code
+        description: |
+          NUCC taxonomy code for the provider's primary specialty.
+          Mapped to a specialty rollup in the intermediate layer via a seed CSV.
+      - name: practice_state
+        description: USPS abbreviation for the provider's primary practice location.
+      - name: enumeration_date
+        description: Date the NPI was first issued. Used downstream for tenure analysis.

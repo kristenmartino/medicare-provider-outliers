@@ -178,6 +178,9 @@ def main() -> int:
                 NULL_IF = ('', 'NULL', '*')
                 EMPTY_FIELD_AS_NULL = TRUE
                 TRIM_SPACE = TRUE
+                -- Source files don't include the trailing _loaded_at column;
+                -- let Snowflake fall back to its DEFAULT for that column.
+                ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE
             """
         )
 
