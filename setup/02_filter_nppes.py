@@ -61,7 +61,7 @@ def main() -> int:
                 "Provider Enumeration Date"                                              AS enumeration_date,
                 "Last Update Date"                                                       AS last_update_date,
                 "NPI Deactivation Date"                                                  AS deactivation_date
-            FROM read_csv('{src}', header=true, sample_size=-1, ignore_errors=false)
+            FROM read_csv('{src}', header=true, all_varchar=true, ignore_errors=false)
             WHERE "Entity Type Code" = '1'
               AND ("NPI Deactivation Date" IS NULL OR "NPI Deactivation Date" = '')
         ) TO '{OUTPUT_PATH}' (HEADER, DELIMITER ',', QUOTE '"', ESCAPE '"')
