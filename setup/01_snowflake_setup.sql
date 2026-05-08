@@ -40,10 +40,15 @@ CREATE ROLE IF NOT EXISTS ANALYST
 -- Warehouse access
 GRANT USAGE ON WAREHOUSE DBT_XS_WH TO ROLE ANALYST;
 
--- Read access to RAW (sources for dbt staging models)
+-- Read access to RAW for dbt staging, plus the writes needed to manage the
+-- one-time CMS source loads (stage, file format, tables). ANALYST owns the
+-- end-to-end pipeline; ACCOUNTADMIN is only used during initial setup.
 GRANT USAGE ON DATABASE RAW TO ROLE ANALYST;
 GRANT USAGE ON SCHEMA RAW.CMS TO ROLE ANALYST;
-GRANT SELECT ON ALL TABLES IN SCHEMA RAW.CMS TO ROLE ANALYST;
+GRANT CREATE TABLE       ON SCHEMA RAW.CMS TO ROLE ANALYST;
+GRANT CREATE STAGE       ON SCHEMA RAW.CMS TO ROLE ANALYST;
+GRANT CREATE FILE FORMAT ON SCHEMA RAW.CMS TO ROLE ANALYST;
+GRANT SELECT ON ALL TABLES    IN SCHEMA RAW.CMS TO ROLE ANALYST;
 GRANT SELECT ON FUTURE TABLES IN SCHEMA RAW.CMS TO ROLE ANALYST;
 
 -- Full access to ANALYTICS (dbt creates schemas + tables here)
