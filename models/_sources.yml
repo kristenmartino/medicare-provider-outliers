@@ -12,7 +12,8 @@ sources:
     # Freshness windows are loose — these are annual datasets (Part D, Part B)
     # plus a monthly NPPES snapshot. We won't fail builds on freshness, but
     # we do want `dbt source freshness` to surface stale loads.
-    loaded_at_field: _loaded_at
+    config:
+      loaded_at_field: _loaded_at
 
     tables:
       - name: part_d_prescribers

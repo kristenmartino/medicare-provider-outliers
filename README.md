@@ -6,12 +6,14 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 ## Headline finding
 
-Of **7.21M unique providers** in the union of NPPES individuals + Part D prescribers + Part B physicians, the marts flag:
+Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(taxonomy_code × state)` peer groups, n ≥ 30), the marts flag:
 
-- **5.20% (374,805)** as outliers via the robust **MAD method** within their (specialty × state) peer group
-- **1.97% (142,023)** via the classical z-score method (more conservative — pulled by extreme tails)
+- **5.37% (379,048)** as outliers via the robust **MAD method**
+- **2.08% (146,852)** via the classical z-score method (conservative — pulled by the same extreme tails it's trying to detect)
 
-The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: an Emergency Medicine physician in California with **$160M in Part D drug cost** vs a peer-group median of **$710** — a modified-z of 214,234.
+The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: **Rushdi Alul** (Emergency Medicine, IL) with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510.
+
+**Peer-group granularity matters.** A first cut used the broad CMS Medicare specialty text and lumped 116k providers under "Internal Medicine." The current build keys peer groups on NPPES `primary_taxonomy_code` (865 NUCC codes), splitting Internal Medicine into 28 subspecialties with median Part D drug costs ranging from **$5k (Sports Medicine IM)** to **$1.1M (Hematology & Oncology)** — clearly different prescribing populations that shouldn't be compared head-to-head.
 
 ## Stack
 
@@ -43,10 +45,13 @@ flowchart LR
 
 | Layer | Models | Build time | Tests |
 |---|---|---|---|
+| Seeds | 1 (NUCC taxonomy) | ~2s | 4 |
 | Staging | 3 views | < 5s | 14 |
-| Intermediate | 4 tables | 38s | 12 |
-| Marts | 4 tables | 18s | 15 |
-| **Total** | **11 models** | **~60s** | **41 / 41 passing** |
+| Intermediate | 4 tables | 25s | 13 |
+| Marts | 4 tables | 18s | 19 |
+| **Total** | **11 models + 1 seed** | **~55s** | **56 / 56 passing** |
+
+Validated on every push via the `.github/workflows/dbt-ci.yml` workflow (offline `dbt parse` — no warehouse credentials needed).
 
 ## Repo layout
 
@@ -87,7 +92,7 @@ flowchart LR
 
 ## Methodology — provider outliers
 
-Providers are scored within (specialty × state) peer groups on six metrics:
+Providers are scored within **(taxonomy_code × state)** peer groups on six metrics. Peer-group key uses NPPES primary taxonomy code (mapped to NUCC display names via the [`nucc_taxonomy`](./seeds/nucc_taxonomy.csv) seed) — 9,490 peer groups survive the n ≥ 30 floor.
 
 - **Part D**: total drug cost, total claims, brand-cost share, avg cost/claim
 - **Part B**: total Medicare payment, total services
@@ -105,9 +110,9 @@ A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags 
 
 ## What's next
 
-- [x] All four model layers built, 41 tests passing
-- [x] Real-data sanity check on outlier flagging
+- [x] All four model layers built, 56 tests passing
+- [x] Methodology refinement (NPPES taxonomy peer groups; Internal Medicine 45% → 32%)
+- [x] CI workflow: offline `dbt parse` on every push
 - [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth
 - [ ] dbt docs published to GitHub Pages (CI + repo secret for the Snowflake key)
 - [ ] Loom walkthrough (5–7 min)
-- [ ] Methodology refinement: tighter peer groups for huge specialties (e.g., Internal Medicine has 116k providers — 45% flag rate suggests sub-grouping is warranted)
