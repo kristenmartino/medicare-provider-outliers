@@ -20,8 +20,10 @@ fi
 source .venv/bin/activate
 
 dbt deps
-dbt parse --no-partial-parse
-dbt docs generate --static --empty-catalog
+dbt docs generate --static
+# We DO want the full catalog (column types per model) — it requires a live
+# Snowflake connection at session start, so this script needs the local
+# key-pair profile. The catalog query takes ~10s.
 
 cp target/static_index.html docs/index.html
 echo "Docs regenerated → docs/index.html ($(wc -c < docs/index.html | awk '{print $1/1024 " KB"}'))"
