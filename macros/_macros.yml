@@ -1,0 +1,68 @@
+version: 2
+
+macros:
+  - name: zscore
+    description: |
+      Classical z-score within a peer group.
+
+      Returns `(value - mean) / stddev`, or NULL when `stddev` is 0 (a
+      degenerate peer group where every member has the same value).
+
+      Used 6× in `mart_provider_outliers` for the tracked metrics; the
+      `|z| ≥ 2.0` threshold is applied by `is_outlier`, not by this macro.
+    arguments:
+      - name: value
+        type: numeric column / expression
+        description: The observation being scored (typically a provider's metric value).
+      - name: mean
+        type: numeric column / expression
+        description: Peer-group mean from `int_provider__peer_group_stats`.
+      - name: stddev
+        type: numeric column / expression
+        description: Peer-group standard deviation.
+
+  - name: modified_zscore
+    description: |
+      Modified z-score (median + median absolute deviation), robust to
+      right-skewed distributions.
+
+      Returns `0.6745 * (value - median) / mad`, or NULL when `mad` is 0.
+      The 0.6745 constant calibrates MAD so that, for a normal distribution,
+      the modified z-score is on the same scale as a classical z-score.
+      Iglewicz & Hoaglin (1993) propose `|modified_z| ≥ 3.5` as the outlier
+      threshold; see `docs/methodology.md` for the rationale.
+
+      Why MAD over stddev: Medicare cost distributions are heavily right-
+      skewed, and a few mega-prescribers pull mean + stddev toward themselves,
+      making classical z-scores miss the obvious outliers. MAD/median is
+      robust to that tail.
+    arguments:
+      - name: value
+        type: numeric column / expression
+        description: The observation being scored.
+      - name: median
+        type: numeric column / expression
+        description: Peer-group median.
+      - name: mad
+        type: numeric column / expression
+        description: Peer-group median absolute deviation.
+      - name: mad_constant
+        type: numeric (default 0.6745)
+        description: Calibration constant; 0.6745 makes the modified-z scale comparable to z under a normal distribution.
+
+  - name: is_outlier
+    description: |
+      True when the absolute value of a score is at or above the supplied
+      threshold. NULL scores propagate to NULL flags, which the marts then
+      `coalesce(..., false)` when forming composite `is_outlier_any_*` flags.
+
+      Conventional thresholds:
+        - Classical z-score:   `|z| ≥ 2.0`
+        - Modified z-score:    `|modified_z| ≥ 3.5`
+    arguments:
+      - name: score
+        type: numeric column / expression
+        description: A z-score or modified-z-score.
+      - name: threshold
+        type: numeric literal
+        description: Threshold above which |score| is treated as outlier.

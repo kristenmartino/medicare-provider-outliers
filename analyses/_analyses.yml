@@ -1,0 +1,82 @@
+version: 2
+
+# Analyses are SQL files dbt parses but doesn't materialize. They serve as
+# living examples of how to query the marts. Run with:
+#   dbt compile -s <analysis_name>     (emits the SQL into target/compiled/)
+# then paste the compiled SQL into Snowsight or pipe it through snowsql.
+
+analyses:
+  - name: top_outliers
+    description: |
+      Top 100 MAD-flagged providers ranked by modified-z on total_drug_cost.
+      Useful for spot-checking the mart, sanity-checking specific NPIs that
+      show up in public reporting, or feeding the headline "find the most
+      extreme prescribers" tab in the Hex notebook.
+    columns:
+      - name: provider_full_name
+        description: '"{first} {last}" from NPPES; the NPI fallback if names are blank.'
+      - name: specialty
+        description: NUCC display name for the provider's primary taxonomy.
+      - name: state
+        description: USPS state abbreviation.
+      - name: city
+        description: Practice city.
+      - name: total_drug_cost
+        description: Provider's total Part D drug cost (USD).
+      - name: peer_median
+        description: Median total_drug_cost across the (taxonomy × state) peer group.
+      - name: peer_group_n
+        description: Size of the peer group (always ≥ 30).
+      - name: modified_z_score
+        description: 0.6745 × (total_drug_cost − peer_median) / MAD.
+
+  - name: peer_group_diagnostics
+    description: |
+      Diagnostic view over peer groups for re-tuning thresholds. Filters to
+      peer groups where >40% of providers fire OR where MAD is suspiciously
+      small (meaning peers are tightly bunched and any deviation looks extreme).
+      Use this when investigating why a particular specialty has an unusual
+      flag rate.
+    columns:
+      - name: specialty
+        description: NUCC display name for the peer group.
+      - name: state
+        description: USPS state.
+      - name: peer_group_n
+        description: Number of providers in the peer group.
+      - name: median_drug_cost
+        description: Peer-group median Part D drug cost.
+      - name: mad_drug_cost
+        description: Median absolute deviation of total_drug_cost.
+      - name: providers_in_mart
+        description: Count of providers from this peer group present in mart_provider_outliers.
+      - name: flagged_mad
+        description: Count flagged via is_outlier_any_mad.
+      - name: flagged_zscore
+        description: Count flagged via is_outlier_any_zscore.
+      - name: pct_flagged_mad
+        description: 100 × flagged_mad / providers_in_mart.
+      - name: pct_flagged_zscore
+        description: 100 × flagged_zscore / providers_in_mart.
+
+  - name: brand_share_opportunity
+    description: |
+      Per (state × specialty), sums the *excess* brand cost — i.e., how much
+      could be saved if outlier providers prescribed at peer-median brand mix.
+      Sized to the top 100 cells (peer-group n ≥ 30). Headline finding:
+      $24.4B nationally; $468M in California Internal Medicine alone.
+    columns:
+      - name: specialty
+        description: NUCC display name for the peer group.
+      - name: state
+        description: USPS state.
+      - name: providers
+        description: Number of providers in the peer group with non-null brand_cost_share.
+      - name: total_excess_brand_cost
+        description: |
+          Sum of (provider.brand_cost_share − peer.median_brand_cost_share) ×
+          provider.total_drug_cost, taken only for providers above the median.
+      - name: avg_brand_share
+        description: Mean brand_cost_share across providers in this cell.
+      - name: peer_median_brand_share
+        description: Median brand_cost_share for the peer group (broadcast — same value across the cell).

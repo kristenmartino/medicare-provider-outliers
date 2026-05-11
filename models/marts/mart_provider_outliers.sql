@@ -17,7 +17,6 @@
 
 {% set z_threshold   = 2.0 %}
 {% set mad_threshold = 3.5 %}
-{% set mad_constant  = 0.6745 %}
 
 with provider as (
     select * from {{ ref('dim_provider') }}
@@ -78,40 +77,40 @@ joined as (
 scored as (
     select
         *,
-        -- Classical z-score
-        case when stddev_drug_cost          > 0 then (total_drug_cost          - mean_drug_cost)          / stddev_drug_cost          end as z_drug_cost,
-        case when stddev_part_d_claims      > 0 then (part_d_total_claims      - mean_part_d_claims)      / stddev_part_d_claims      end as z_part_d_claims,
-        case when stddev_brand_cost_share   > 0 then (brand_cost_share         - mean_brand_cost_share)   / stddev_brand_cost_share   end as z_brand_cost_share,
-        case when stddev_avg_cost_per_claim > 0 then (avg_cost_per_claim       - mean_avg_cost_per_claim) / stddev_avg_cost_per_claim end as z_avg_cost_per_claim,
-        case when stddev_part_b_payment     > 0 then (total_medicare_payment   - mean_part_b_payment)     / stddev_part_b_payment     end as z_part_b_payment,
-        case when stddev_part_b_services    > 0 then (part_b_total_services    - mean_part_b_services)    / stddev_part_b_services    end as z_part_b_services,
+        -- Classical z-scores
+        {{ zscore('total_drug_cost',        'mean_drug_cost',          'stddev_drug_cost')          }} as z_drug_cost,
+        {{ zscore('part_d_total_claims',    'mean_part_d_claims',      'stddev_part_d_claims')      }} as z_part_d_claims,
+        {{ zscore('brand_cost_share',       'mean_brand_cost_share',   'stddev_brand_cost_share')   }} as z_brand_cost_share,
+        {{ zscore('avg_cost_per_claim',     'mean_avg_cost_per_claim', 'stddev_avg_cost_per_claim') }} as z_avg_cost_per_claim,
+        {{ zscore('total_medicare_payment', 'mean_part_b_payment',     'stddev_part_b_payment')     }} as z_part_b_payment,
+        {{ zscore('part_b_total_services',  'mean_part_b_services',    'stddev_part_b_services')    }} as z_part_b_services,
 
-        -- Modified z-score (MAD)
-        case when mad_drug_cost          > 0 then {{ mad_constant }} * (total_drug_cost          - median_drug_cost)          / mad_drug_cost          end as mz_drug_cost,
-        case when mad_part_d_claims      > 0 then {{ mad_constant }} * (part_d_total_claims      - median_part_d_claims)      / mad_part_d_claims      end as mz_part_d_claims,
-        case when mad_brand_cost_share   > 0 then {{ mad_constant }} * (brand_cost_share         - median_brand_cost_share)   / mad_brand_cost_share   end as mz_brand_cost_share,
-        case when mad_avg_cost_per_claim > 0 then {{ mad_constant }} * (avg_cost_per_claim       - median_avg_cost_per_claim) / mad_avg_cost_per_claim end as mz_avg_cost_per_claim,
-        case when mad_part_b_payment     > 0 then {{ mad_constant }} * (total_medicare_payment   - median_part_b_payment)     / mad_part_b_payment     end as mz_part_b_payment,
-        case when mad_part_b_services    > 0 then {{ mad_constant }} * (part_b_total_services    - median_part_b_services)    / mad_part_b_services    end as mz_part_b_services
+        -- Modified z-scores (MAD-based)
+        {{ modified_zscore('total_drug_cost',        'median_drug_cost',          'mad_drug_cost')          }} as mz_drug_cost,
+        {{ modified_zscore('part_d_total_claims',    'median_part_d_claims',      'mad_part_d_claims')      }} as mz_part_d_claims,
+        {{ modified_zscore('brand_cost_share',       'median_brand_cost_share',   'mad_brand_cost_share')   }} as mz_brand_cost_share,
+        {{ modified_zscore('avg_cost_per_claim',     'median_avg_cost_per_claim', 'mad_avg_cost_per_claim') }} as mz_avg_cost_per_claim,
+        {{ modified_zscore('total_medicare_payment', 'median_part_b_payment',     'mad_part_b_payment')     }} as mz_part_b_payment,
+        {{ modified_zscore('part_b_total_services',  'median_part_b_services',    'mad_part_b_services')    }} as mz_part_b_services
     from joined
 ),
 
 flagged as (
     select
         *,
-        abs(z_drug_cost)          >= {{ z_threshold }}     as outlier_zscore_drug_cost,
-        abs(z_part_d_claims)      >= {{ z_threshold }}     as outlier_zscore_part_d_claims,
-        abs(z_brand_cost_share)   >= {{ z_threshold }}     as outlier_zscore_brand_cost_share,
-        abs(z_avg_cost_per_claim) >= {{ z_threshold }}     as outlier_zscore_avg_cost_per_claim,
-        abs(z_part_b_payment)     >= {{ z_threshold }}     as outlier_zscore_part_b_payment,
-        abs(z_part_b_services)    >= {{ z_threshold }}     as outlier_zscore_part_b_services,
+        {{ is_outlier('z_drug_cost',          z_threshold) }} as outlier_zscore_drug_cost,
+        {{ is_outlier('z_part_d_claims',      z_threshold) }} as outlier_zscore_part_d_claims,
+        {{ is_outlier('z_brand_cost_share',   z_threshold) }} as outlier_zscore_brand_cost_share,
+        {{ is_outlier('z_avg_cost_per_claim', z_threshold) }} as outlier_zscore_avg_cost_per_claim,
+        {{ is_outlier('z_part_b_payment',     z_threshold) }} as outlier_zscore_part_b_payment,
+        {{ is_outlier('z_part_b_services',    z_threshold) }} as outlier_zscore_part_b_services,
 
-        abs(mz_drug_cost)          >= {{ mad_threshold }}   as outlier_mad_drug_cost,
-        abs(mz_part_d_claims)      >= {{ mad_threshold }}   as outlier_mad_part_d_claims,
-        abs(mz_brand_cost_share)   >= {{ mad_threshold }}   as outlier_mad_brand_cost_share,
-        abs(mz_avg_cost_per_claim) >= {{ mad_threshold }}   as outlier_mad_avg_cost_per_claim,
-        abs(mz_part_b_payment)     >= {{ mad_threshold }}   as outlier_mad_part_b_payment,
-        abs(mz_part_b_services)    >= {{ mad_threshold }}   as outlier_mad_part_b_services
+        {{ is_outlier('mz_drug_cost',          mad_threshold) }} as outlier_mad_drug_cost,
+        {{ is_outlier('mz_part_d_claims',      mad_threshold) }} as outlier_mad_part_d_claims,
+        {{ is_outlier('mz_brand_cost_share',   mad_threshold) }} as outlier_mad_brand_cost_share,
+        {{ is_outlier('mz_avg_cost_per_claim', mad_threshold) }} as outlier_mad_avg_cost_per_claim,
+        {{ is_outlier('mz_part_b_payment',     mad_threshold) }} as outlier_mad_part_b_payment,
+        {{ is_outlier('mz_part_b_services',    mad_threshold) }} as outlier_mad_part_b_services
     from scored
 )
 
