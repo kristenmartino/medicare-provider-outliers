@@ -1,9 +1,12 @@
 name: dbt CI
 
 # Validates the dbt project on every push and PR using a stub profile so no
-# Snowflake credentials need to live in GitHub Secrets. On pushes to main, also
-# builds the dbt docs site (without warehouse-derived catalog) and deploys it
-# to GitHub Pages.
+# Snowflake credentials need to live in GitHub Secrets. Catches model SQL
+# syntax errors, broken refs, undeclared sources, and stale schema yml
+# references before they hit the warehouse.
+#
+# The dbt docs static site is built locally and committed under docs/index.html;
+# GitHub Pages serves it from there. See README "dbt docs" section.
 
 on:
   push:
@@ -16,18 +19,10 @@ concurrency:
   group: dbt-ci-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
-    outputs:
-      docs-built: ${{ steps.docs.outputs.built }}
 
     steps:
       - uses: actions/checkout@v4
@@ -86,33 +81,3 @@ jobs:
           print(f"Tests   : {tests}")
           print(f"Sources : {len(sources)}")
           EOF
-
-      - name: Build dbt docs (static, empty catalog)
-        id: docs
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          dbt docs generate --static --empty-catalog
-          # The --static flag emits target/static_index.html containing the
-          # whole site in a single file. Stage just that into a clean site/
-          # dir for GitHub Pages.
-          mkdir -p site
-          cp target/static_index.html site/index.html
-          echo "built=true" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Pages artifact
-        if: steps.docs.outputs.built == 'true'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/
-
-  deploy-docs:
-    needs: validate
-    if: needs.validate.outputs.docs-built == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

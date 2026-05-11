@@ -4,6 +4,8 @@
 
 A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow on a real, large public dataset (43.7M source rows across three CMS files).
 
+📚 **Live dbt docs: [kristenmartino.github.io/medicare-provider-outliers](https://kristenmartino.github.io/medicare-provider-outliers/)** — interactive lineage graph, model SQL, schema docs, and test coverage.
+
 ## Headline finding
 
 Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(taxonomy_code × state)` peer groups, n ≥ 30), the marts flag:
@@ -88,7 +90,8 @@ Validated on every push via the `.github/workflows/dbt-ci.yml` workflow (offline
 5. **Verify** — `dbt debug` returns "All checks passed!"
 6. **Source data** — follow [`setup/README.md`](./setup/README.md) to download the three CMS files and run `setup/02_filter_nppes.py` + `setup/03_load_to_snowflake.py`
 7. **Build** — `dbt deps && dbt build` (~60s)
-8. **Docs** — `dbt docs generate && dbt docs serve` opens the lineage graph on `localhost:8080`
+8. **Docs locally** — `dbt docs generate && dbt docs serve` opens the lineage graph on `localhost:8080`
+9. **Republish to GH Pages** — `./scripts/build_docs.sh` regenerates `docs/index.html`; commit + push to update [the public site](https://kristenmartino.github.io/medicare-provider-outliers/)
 
 ## Methodology — provider outliers
 
@@ -113,6 +116,7 @@ A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags 
 - [x] All four model layers built, 56 tests passing
 - [x] Methodology refinement (NPPES taxonomy peer groups; Internal Medicine 45% → 32%)
 - [x] CI workflow: offline `dbt parse` on every push
+- [x] dbt docs published to GitHub Pages — served from `docs/index.html`, regenerated via `./scripts/build_docs.sh`
+- [x] Methodology doc + ad-hoc analyses (`docs/methodology.md`, `analyses/*.sql`)
 - [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth
-- [ ] dbt docs published to GitHub Pages (CI + repo secret for the Snowflake key)
 - [ ] Loom walkthrough (5–7 min)
