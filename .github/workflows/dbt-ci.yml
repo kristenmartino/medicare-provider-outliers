@@ -1,9 +1,9 @@
 name: dbt CI
 
-# Validates the dbt project on every push and PR — runs offline using a
-# stub profile so we don't need Snowflake credentials as GitHub secrets.
-# Catches model SQL syntax errors, broken refs, undeclared sources, and
-# stale schema yml references before they hit the warehouse.
+# Validates the dbt project on every push and PR using a stub profile so no
+# Snowflake credentials need to live in GitHub Secrets. On pushes to main, also
+# builds the dbt docs site (without warehouse-derived catalog) and deploys it
+# to GitHub Pages.
 
 on:
   push:
@@ -12,15 +12,22 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Cancel in-flight runs when new commits land on a branch.
 concurrency:
   group: dbt-ci-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
+    outputs:
+      docs-built: ${{ steps.docs.outputs.built }}
 
     steps:
       - uses: actions/checkout@v4
@@ -62,8 +69,6 @@ jobs:
         run: dbt deps
 
       - name: dbt parse (full project validation)
-        # --no-partial-parse forces dbt to re-validate the entire manifest
-        # rather than using a cached one from a previous run.
         run: dbt parse --no-partial-parse
 
       - name: Show parsed manifest summary
@@ -73,11 +78,41 @@ jobs:
           m = json.loads(pathlib.Path("target/manifest.json").read_text())
           nodes = m.get("nodes", {})
           sources = m.get("sources", {})
-          tests = sum(1 for n in nodes.values() if n.get("resource_type") == "test")
-          models = sum(1 for n in nodes.values() if n.get("resource_type") == "model")
-          seeds = sum(1 for n in nodes.values() if n.get("resource_type") == "seed")
+          tests   = sum(1 for n in nodes.values() if n.get("resource_type") == "test")
+          models  = sum(1 for n in nodes.values() if n.get("resource_type") == "model")
+          seeds   = sum(1 for n in nodes.values() if n.get("resource_type") == "seed")
           print(f"Models  : {models}")
           print(f"Seeds   : {seeds}")
           print(f"Tests   : {tests}")
           print(f"Sources : {len(sources)}")
           EOF
+
+      - name: Build dbt docs (static, empty catalog)
+        id: docs
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          dbt docs generate --static --empty-catalog
+          # The --static flag emits target/static_index.html containing the
+          # whole site in a single file. Stage just that into a clean site/
+          # dir for GitHub Pages.
+          mkdir -p site
+          cp target/static_index.html site/index.html
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Pages artifact
+        if: steps.docs.outputs.built == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy-docs:
+    needs: validate
+    if: needs.validate.outputs.docs-built == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
