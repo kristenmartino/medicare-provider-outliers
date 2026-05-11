@@ -1,10 +1,10 @@
 {{ config(materialized = 'table') }}
 
 /*
-    Provider dimension. One row per NPI present in any source. Same shape as
-    int_provider__profile but with a couple of presentation-layer touches:
-    a `provider_full_name` for display, and renaming `is_in_nppes` etc. to
-    a cleaner `*_flag` form.
+    Provider dimension — one row per NPI seen in any source. Carries the
+    granular NPPES taxonomy code (the peer-group key) plus the NUCC display
+    name as `specialty`. Pass-through of int_provider__profile with
+    display-friendly column names.
 */
 
 with profile as (
@@ -21,12 +21,21 @@ select
     provider_last_name,
     provider_credentials,
     provider_sex_code,
-    primary_taxonomy_code,
-    nppes_specialty_grouping,
+
+    -- Specialty: NUCC display name + the underlying taxonomy code
+    canonical_taxonomy_code                                                        as taxonomy_code,
     specialty,
+    nucc_grouping,
+    nucc_classification,
+    nucc_specialization,
+    nppes_specialty_grouping,
+
+    -- Geography
     state,
     city,
     practice_zip5,
+
+    -- Per-source coverage flags
     is_in_nppes                                                                    as in_nppes_flag,
     is_part_d_prescriber                                                           as part_d_prescriber_flag,
     is_part_b_provider                                                             as part_b_provider_flag

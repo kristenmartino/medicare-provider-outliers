@@ -37,3 +37,10 @@ models:
 seeds:
   medicare:
     +schema: seeds
+    nucc_taxonomy:
+      +column_types:
+        taxonomy_code:  varchar(10)
+        grouping:       varchar(256)
+        classification: varchar(256)
+        specialization: varchar(256)
+        display_name:   varchar(256)

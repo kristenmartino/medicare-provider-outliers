@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+  - name: nucc_taxonomy
+    description: |
+      NUCC Health Care Provider Taxonomy Code Set v25.1 (released 7/1/2025).
+      Filtered to the 865 codes that actually appear in our NPPES snapshot.
+      Source: https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40/csv-mainmenu-57
+
+      Used as the peer-group key in int_provider__peer_group_stats — far more
+      granular than the CMS Medicare specialty text (which lumps all 116k
+      Internal Medicine providers into one bucket regardless of subspecialty).
+    columns:
+      - name: taxonomy_code
+        description: 10-character NUCC code (e.g., 207RC0000X = Cardiovascular Disease).
+        tests:
+          - unique
+          - not_null
+      - name: display_name
+        description: Human-readable specialty name (e.g., "Cardiovascular Disease").
+        tests:
+          - not_null
+      - name: grouping
+        description: High-level NUCC grouping (e.g., "Allopathic & Osteopathic Physicians").
+      - name: classification
+        description: Mid-level classification (e.g., "Internal Medicine").
+      - name: specialization
+        description: Subspecialization, where applicable (e.g., "Cardiovascular Disease").
