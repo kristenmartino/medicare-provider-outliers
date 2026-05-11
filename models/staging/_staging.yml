@@ -5,15 +5,31 @@ models:
     description: |
       Cleaned Part D prescriber-drug grain. Casts numeric cells, derives a
       brand-vs-generic flag (CMS convention: brand_name = generic_name → generic),
-      and surfaces explicit suppression semantics so marts can decide whether to
+      surfaces explicit suppression semantics so marts can decide whether to
       include suppressed cells. CMS suppresses cells with <11 beneficiaries.
     columns:
       - name: npi
         description: National Provider Identifier of the prescriber.
         tests:
           - not_null
+      - name: prescriber_last_org_name
+        description: Prescriber's last name (or organizational name for org NPIs, which Part D rarely contains).
+      - name: prescriber_first_name
+        description: Prescriber's first name.
+      - name: prescriber_city
+        description: Prescriber's billing city.
+      - name: prescriber_state
+        description: USPS 2-letter abbreviation of the prescriber's billing state.
+      - name: prescriber_state_fips
+        description: 2-digit FIPS code for the state.
+      - name: prescriber_specialty_text
+        description: 'CMS Medicare specialty text (e.g., "Internal Medicine", "Cardiology", "Family Practice").'
+      - name: brand_name
+        description: Brand-name string for the drug. Equals generic_name when the prescription is for the generic.
+      - name: generic_name
+        description: Generic name for the drug (e.g., "atorvastatin" for both Lipitor brand and the generic).
       - name: drug_kind
-        description: brand or generic, derived per CMS convention.
+        description: 'brand or generic, derived per CMS convention (brand_name = generic_name → generic).'
         tests:
           - accepted_values:
               arguments:
@@ -21,47 +37,119 @@ models:
               config:
                 where: "drug_kind is not null"
       - name: total_claims
-        description: Total Part D claims for this prescriber-drug.
+        description: Total Part D claims for this (NPI × drug) cell.
         tests:
           - not_null
+      - name: total_30day_fills
+        description: Total 30-day-equivalent fills.
+      - name: total_day_supply
+        description: Total day-supply across all fills.
       - name: total_drug_cost
-        description: Total drug cost (USD) across all beneficiaries for this prescriber-drug.
+        description: Total drug cost (USD).
+      - name: total_beneficiaries
+        description: Number of unique beneficiaries. Null when CMS suppressed the cell (<11 benes).
+      - name: ge65_suppression_flag
+        description: CMS flag indicating Beneficiary ≥ 65 cells were suppressed.
+      - name: ge65_total_claims
+        description: Total claims for beneficiaries aged 65+.
+      - name: ge65_total_30day_fills
+        description: Total 30-day-equivalent fills for benes 65+.
+      - name: ge65_total_drug_cost
+        description: Total drug cost for benes 65+.
+      - name: ge65_total_day_supply
+        description: Total day-supply for benes 65+.
+      - name: ge65_beneficiary_suppression_flag
+        description: CMS flag indicating the ge65_total_beneficiaries count was suppressed.
+      - name: ge65_total_beneficiaries
+        description: Unique bene count for the 65+ subset; null when suppressed.
       - name: is_beneficiary_count_suppressed
         description: True when CMS suppressed total_beneficiaries (<11 benes for the cell).
         tests:
           - not_null
       - name: data_year
-        description: Calendar year the row covers (currently 2023 for the only loaded vintage).
+        description: Calendar year (2023).
         tests:
           - not_null
+      - name: loaded_at
+        description: Timestamp the row was COPY-INTO'd to Snowflake.
 
   - name: stg_part_b__provider_service
     description: |
       Cleaned Part B service-grain rows (one per NPI × HCPCS × place-of-service).
-      Carries both individual ('I') and organizational ('O') rendering providers —
-      filtering happens in the intermediate layer where peer-group analysis is
-      defined.
+      Carries both individual ('I') and organizational ('O') rendering providers
+      — filtering happens in the intermediate layer where peer-group analysis
+      is defined.
     columns:
       - name: npi
         description: National Provider Identifier of the rendering provider.
         tests:
           - not_null
-      - name: hcpcs_code
-        description: HCPCS procedure code.
-        tests:
-          - not_null
+      - name: provider_last_org_name
+        description: Last name (or org name) of the rendering provider.
+      - name: provider_first_name
+        description: First name of the rendering provider.
+      - name: provider_middle_initial
+        description: Middle initial.
+      - name: provider_credentials
+        description: 'Free-text credentials (e.g., "MD", "MD, PhD").'
       - name: provider_entity_code
         description: I = Individual, O = Organization.
         tests:
           - accepted_values:
               arguments:
                 values: ['I', 'O']
-      - name: avg_medicare_payment_amount
-        description: Average Medicare payment amount per service line for this NPI × HCPCS × POS.
-      - name: data_year
-        description: Calendar year the row covers.
+      - name: provider_address_line_1
+        description: Billing address line 1.
+      - name: provider_address_line_2
+        description: Billing address line 2.
+      - name: provider_city
+        description: Billing city.
+      - name: provider_state
+        description: USPS 2-letter state abbreviation.
+      - name: provider_state_fips
+        description: 2-digit FIPS state code.
+      - name: provider_zip5
+        description: First 5 digits of the billing ZIP.
+      - name: provider_ruca
+        description: RUCA (Rural-Urban Commuting Area) code.
+      - name: provider_ruca_desc
+        description: RUCA description (e.g., "Metropolitan area core").
+      - name: provider_country
+        description: Billing country code.
+      - name: provider_specialty_text
+        description: CMS Medicare specialty text.
+      - name: medicare_participating_ind
+        description: 'Y/N indicator for whether the provider participates in Medicare assignment.'
+      - name: hcpcs_code
+        description: HCPCS procedure code (5 chars).
         tests:
           - not_null
+      - name: hcpcs_description
+        description: Long-form description of the HCPCS code.
+      - name: hcpcs_drug_indicator
+        description: Y/N flag — whether the HCPCS code is for a drug administration.
+      - name: place_of_service
+        description: 'F = Facility, O = Non-facility (office).'
+      - name: total_beneficiaries
+        description: Number of unique benes served for this (NPI × HCPCS × POS).
+      - name: total_services
+        description: Total services rendered.
+      - name: total_bene_day_services
+        description: Beneficiary-day-services count.
+      - name: avg_submitted_charge
+        description: Average submitted charge (USD) per service.
+      - name: avg_medicare_allowed_amount
+        description: Average Medicare allowed amount per service.
+      - name: avg_medicare_payment_amount
+        description: Average Medicare payment amount per service.
+      - name: avg_medicare_standardized_amount
+        description: Average Medicare standardized amount per service (geographic adjustment removed).
+      - name: data_year
+        description: Calendar year (2023).
+        tests:
+          - not_null
+      - name: loaded_at
+        description: Timestamp the row was COPY-INTO'd to Snowflake.
 
   - name: stg_nppes__providers
     description: |
@@ -81,10 +169,26 @@ models:
           - accepted_values:
               arguments:
                 values: ['1']
+      - name: provider_last_name
+        description: Legal last name.
+      - name: provider_first_name
+        description: Legal first name.
+      - name: provider_middle_name
+        description: Legal middle name.
+      - name: provider_credentials
+        description: Free-text credentials string.
+      - name: practice_state
+        description: USPS abbreviation for the primary practice location (upper-cased, trimmed).
+      - name: practice_city
+        description: Primary practice city (initcap + trimmed).
+      - name: practice_zip5
+        description: First 5 digits of the practice ZIP.
+      - name: provider_sex_code
+        description: 'M or F.'
       - name: primary_taxonomy_code
         description: |
           NUCC taxonomy code for the provider's primary specialty.
-          Full hierarchy at nucc.org.
+          Full hierarchy at nucc.org; we join the nucc_taxonomy seed for display names.
       - name: specialty_grouping
         description: |
           Coarse rollup off the first 3 chars of the taxonomy code:
@@ -103,5 +207,9 @@ models:
                   - Group
                   - Other Service Provider
                   - Other
-      - name: practice_state
-        description: USPS abbreviation for the provider's primary practice location.
+      - name: enumeration_date_raw
+        description: Date the NPI was first issued (string MM/DD/YYYY from source).
+      - name: last_update_date_raw
+        description: Date NPPES last updated this record (string MM/DD/YYYY).
+      - name: loaded_at
+        description: Timestamp the row was COPY-INTO'd to Snowflake.

@@ -3,76 +3,220 @@ version: 2
 models:
   - name: int_part_d__provider_annual
     description: |
-      Part D rolled up from (NPI × drug) to (NPI × year). Adds brand-vs-generic
-      share metrics and average cost per claim. Suppressed-beneficiary rows
-      still contribute to claim/cost totals — the suppressed value is the
-      beneficiary count itself, not the volume metrics.
+      Part D rolled up from (NPI × drug) to (NPI × year). Aggregates claims, fills,
+      day-supply, and cost across all of the prescriber's drugs; derives
+      brand-vs-generic share metrics and average cost per claim. Suppressed-
+      beneficiary rows still contribute to claim/cost totals — only the
+      beneficiary count itself was suppressed.
     columns:
       - name: npi
+        description: National Provider Identifier of the prescriber.
         tests:
           - unique
           - not_null
+      - name: data_year
+        description: Calendar year covered.
+      - name: prescriber_specialty_text
+        description: Modal CMS Medicare specialty text across the prescriber's drug rows (max_by(specialty, total_claims)).
+      - name: prescriber_state
+        description: Modal Part D billing state for the prescriber.
+      - name: prescriber_city
+        description: Modal Part D billing city for the prescriber.
+      - name: total_claims
+        description: Sum of total_claims across all drugs the prescriber wrote.
+      - name: total_30day_fills
+        description: Sum of 30-day-equivalent fills.
       - name: total_drug_cost
-        description: Total Part D drug cost (USD) across all the prescriber's drugs.
+        description: Sum of total drug cost (USD).
+      - name: total_day_supply
+        description: Sum of total day-supply.
+      - name: distinct_generics
+        description: Count of distinct generic_name values written.
+      - name: distinct_brands
+        description: Count of distinct brand_name values written.
+      - name: brand_claims
+        description: Sum of claims where drug_kind = 'brand'.
+      - name: generic_claims
+        description: Sum of claims where drug_kind = 'generic'.
+      - name: brand_drug_cost
+        description: Sum of drug cost where drug_kind = 'brand'.
+      - name: generic_drug_cost
+        description: Sum of drug cost where drug_kind = 'generic'.
+      - name: brand_claims_share
+        description: brand_claims / total_claims. Null when total_claims = 0.
       - name: brand_cost_share
-        description: Share of total drug cost attributable to brand-name drugs (0–1).
+        description: brand_drug_cost / total_drug_cost. Null when total_drug_cost = 0.
       - name: avg_cost_per_claim
-        description: total_drug_cost / total_claims.
+        description: total_drug_cost / total_claims. Null when total_claims = 0.
 
   - name: int_part_b__provider_annual
     description: |
-      Part B rolled up from (NPI × HCPCS × POS) to (NPI × year). Filtered to
-      individual rendering providers. Cost totals are reconstructed from
-      per-service averages × total_services, since CMS publishes averages.
+      Part B rolled up from (NPI × HCPCS × place_of_service) to (NPI × year).
+      Filtered to individual rendering providers (entity code 'I'). Cost totals
+      are reconstructed from per-service averages × volume, since CMS publishes
+      averages.
     columns:
       - name: npi
+        description: National Provider Identifier of the rendering provider.
         tests:
           - unique
           - not_null
-      - name: total_medicare_payment
-        description: Reconstructed total Medicare payment (avg × services, summed).
+      - name: data_year
+        description: Calendar year covered.
+      - name: provider_specialty_text
+        description: Modal CMS Medicare specialty text across the provider's HCPCS rows.
+      - name: provider_state
+        description: Modal Part B billing state.
+      - name: provider_city
+        description: Modal Part B billing city.
       - name: total_services
-        description: Total Part B services rendered.
+        description: Sum of services rendered across all HCPCS × POS combos.
+      - name: total_beneficiaries_naive_sum
+        description: Naive sum of beneficiary counts across HCPCS rows (NOT a unique count).
+      - name: total_bene_day_services
+        description: Sum of beneficiary-day-services.
+      - name: distinct_hcpcs
+        description: Count of distinct HCPCS procedure codes billed.
+      - name: total_submitted_charges
+        description: Reconstructed total submitted charges (avg × services, summed).
+      - name: total_medicare_allowed
+        description: Reconstructed total Medicare allowed amount.
+      - name: total_medicare_payment
+        description: Reconstructed total Medicare payment.
+      - name: total_medicare_standardized
+        description: Reconstructed total Medicare standardized amount (geo-adjustment removed).
+      - name: avg_medicare_payment_per_service
+        description: total_medicare_payment / total_services.
+      - name: payment_to_allowed_ratio
+        description: total_medicare_payment / total_medicare_allowed.
 
   - name: int_provider__profile
     description: |
       Unified provider directory — one row per NPI present in any of the three
-      sources. Best-available specialty and state via a fallback chain (CMS
-      Part D → Part B → NPPES). Coverage flags indicate which sources the
-      provider appears in.
+      sources. Best-known specialty + taxonomy via fallback chain (NPPES taxonomy
+      preferred, CMS specialty text secondary). Coverage flags indicate which
+      sources the provider appears in.
     columns:
       - name: npi
+        description: National Provider Identifier.
         tests:
           - unique
           - not_null
+      - name: provider_first_name
+        description: NPPES first name (null for providers not in NPPES).
+      - name: provider_last_name
+        description: NPPES last name.
+      - name: provider_credentials
+        description: NPPES credentials string.
+      - name: provider_sex_code
+        description: NPPES sex code ('M' or 'F').
+      - name: taxonomy_code
+        description: NPPES primary taxonomy code (null when NPPES coverage is missing).
+      - name: nucc_grouping
+        description: NUCC grouping (from the seed).
+      - name: nucc_classification
+        description: NUCC classification (from the seed).
+      - name: nucc_specialization
+        description: NUCC specialization (from the seed). Null when there's no further subspecialty.
+      - name: nppes_specialty_grouping
+        description: Coarse specialty rollup from staging (Physician / Advanced Practice / etc.).
       - name: specialty
-        description: Best-known specialty (CMS-published if present, NPPES grouping otherwise).
+        description: |
+          Canonical display specialty. NUCC display_name → CMS Part D specialty
+          → CMS Part B specialty → NPPES coarse grouping → "Unknown".
+      - name: canonical_taxonomy_code
+        description: |
+          Peer-group key — the NPPES primary_taxonomy_code, or null for
+          providers not in NPPES. Used as the partition key in
+          int_provider__peer_group_stats.
       - name: state
-        description: Best-known practice state.
+        description: 'Best-known practice state (NPPES → Part D → Part B fallback).'
+      - name: city
+        description: Best-known practice city.
+      - name: practice_zip5
+        description: NPPES practice ZIP (first 5 digits).
       - name: is_in_nppes
+        description: True when the NPI appears in the NPPES monthly snapshot.
         tests:
           - not_null
       - name: is_part_d_prescriber
+        description: True when the NPI prescribed any Part D drug in the data year.
         tests:
           - not_null
       - name: is_part_b_provider
+        description: True when the NPI rendered any Part B service in the data year.
         tests:
           - not_null
 
   - name: int_provider__peer_group_stats
     description: |
-      Peer-group (specialty × state) statistics for the metrics that drive
-      outlier detection: drug cost, claims, brand share, cost-per-claim,
-      Medicare payment, services. Filters out peer groups with n < 30 to
-      avoid indefensible flags on tiny groups.
+      Peer-group (taxonomy_code × state) statistics for the six metrics that
+      drive outlier detection. Floors peer groups at n ≥ 30 to avoid
+      indefensible flags on tiny groups. MAD is computed via a two-pass
+      structure (window-broadcast median, then aggregate absolute deviations)
+      because Snowflake doesn't allow nested median() in a single aggregate.
     columns:
+      - name: canonical_taxonomy_code
+        description: NPPES primary taxonomy code — the partition key.
+        tests:
+          - not_null
       - name: specialty
+        description: NUCC display name for the taxonomy (modal value across the peer group).
         tests:
           - not_null
       - name: state
+        description: USPS state abbreviation.
         tests:
           - not_null
       - name: n_providers
-        description: Number of providers in this peer group (always ≥ 30).
+        description: Number of providers in the peer group. Always ≥ 30.
         tests:
           - not_null
+      - name: mean_drug_cost
+        description: Mean of total_drug_cost across providers in the peer group.
+      - name: stddev_drug_cost
+        description: Standard deviation of total_drug_cost.
+      - name: median_drug_cost
+        description: Median of total_drug_cost.
+      - name: mad_drug_cost
+        description: Median absolute deviation of total_drug_cost.
+      - name: mean_part_d_claims
+        description: Mean of part_d_total_claims.
+      - name: stddev_part_d_claims
+        description: Standard deviation of part_d_total_claims.
+      - name: median_part_d_claims
+        description: Median of part_d_total_claims.
+      - name: mad_part_d_claims
+        description: Median absolute deviation of part_d_total_claims.
+      - name: mean_brand_cost_share
+        description: Mean of brand_cost_share.
+      - name: stddev_brand_cost_share
+        description: Standard deviation of brand_cost_share.
+      - name: median_brand_cost_share
+        description: Median of brand_cost_share.
+      - name: mad_brand_cost_share
+        description: Median absolute deviation of brand_cost_share.
+      - name: mean_avg_cost_per_claim
+        description: Mean of avg_cost_per_claim.
+      - name: stddev_avg_cost_per_claim
+        description: Standard deviation of avg_cost_per_claim.
+      - name: median_avg_cost_per_claim
+        description: Median of avg_cost_per_claim.
+      - name: mad_avg_cost_per_claim
+        description: Median absolute deviation of avg_cost_per_claim.
+      - name: mean_part_b_payment
+        description: Mean of total_medicare_payment.
+      - name: stddev_part_b_payment
+        description: Standard deviation of total_medicare_payment.
+      - name: median_part_b_payment
+        description: Median of total_medicare_payment.
+      - name: mad_part_b_payment
+        description: Median absolute deviation of total_medicare_payment.
+      - name: mean_part_b_services
+        description: Mean of total_services.
+      - name: stddev_part_b_services
+        description: Standard deviation of total_services.
+      - name: median_part_b_services
+        description: Median of total_services.
+      - name: mad_part_b_services
+        description: Median absolute deviation of total_services.
