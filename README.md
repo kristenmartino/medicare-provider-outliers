@@ -17,6 +17,8 @@ Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(t
 
 The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: **Rushdi Alul** (Emergency Medicine, IL) with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510.
 
+> **"Outlier" is a statistical descriptor, not an allegation.** Every name in this dataset is from the public NPPES registry; every dollar figure is from the public CMS Provider Data Catalog. Defensible patterns (facility-level prescribing aggregated to an attending NPI, sub-specialists in generic taxonomies, oncology panels) produce extreme scores. See [`docs/disclaimer.md`](./docs/disclaimer.md).
+
 **Peer-group granularity matters.** A first cut used the broad CMS Medicare specialty text and lumped 116k providers under "Internal Medicine." The current build keys peer groups on NPPES `primary_taxonomy_code` (865 NUCC codes), splitting Internal Medicine into 28 subspecialties with median Part D drug costs ranging from **$5k (Sports Medicine IM)** to **$1.1M (Hematology & Oncology)** — clearly different prescribing populations that shouldn't be compared head-to-head.
 
 ## Stack
@@ -28,8 +30,9 @@ The MAD method's sensitivity to right-skewed Medicare cost distributions is the 
 | Auth | RSA key-pair | MFA-exempt; CI-portable |
 | Transformation | dbt Core 1.11 on Python 3.13 | dbt-snowflake 1.11.4 |
 | BI / notebook | Hex (Hobby tier) | Snowflake-native connector |
-| Docs | `dbt docs generate` (local) | GitHub Pages publishing planned |
-| Tests | 41 dbt schema tests | All green |
+| Docs | dbt docs static site | [Live on GitHub Pages](https://kristenmartino.github.io/medicare-provider-outliers/), regenerated via `./scripts/build_docs.sh` |
+| Tests | 48 dbt tests (45 schema + 3 singular) | All green |
+| CI | GitHub Actions, offline `dbt parse` | Catches SQL / ref / source breaks without needing warehouse creds in repo secrets |
 
 ## Architecture
 
@@ -49,18 +52,20 @@ flowchart LR
 
 | Layer | Models | Build time | Tests |
 |---|---|---|---|
-| Seeds | 1 (NUCC taxonomy) | ~2s | 4 |
+| Seeds | 1 (NUCC taxonomy) | ~2s | 3 |
 | Staging | 3 views | < 5s | 14 |
 | Intermediate | 4 tables | 25s | 13 |
-| Marts | 4 tables | 18s | 19 |
-| **Total** | **11 models + 1 seed** | **~55s** | **56 / 56 passing** |
+| Marts | 4 tables | 18s | 15 |
+| **Total** | **11 models + 1 seed + 3 analyses** | **~55s** | **48 / 48 passing** (45 schema + 3 singular) |
 
-Validated on every push via the `.github/workflows/dbt-ci.yml` workflow (offline `dbt parse` — no warehouse credentials needed).
+Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows/dbt-ci.yml). The workflow runs `dbt parse` offline against a stub profile — no Snowflake credentials live in repo secrets. This catches SQL syntax errors, broken `{{ ref }}` / `{{ source }}` lookups, and stale schema-yml columns before they ever hit the warehouse; running real tests in CI would require provisioning a CI-scoped Snowflake user with key-pair auth, which is the right next step once the project leaves portfolio mode.
 
 ## Repo layout
 
 ```
 .
+├── .github/workflows/
+│   └── dbt-ci.yml                      # Offline `dbt parse` on every push
 ├── setup/                              # One-time Snowflake bootstrap
 │   ├── 01_snowflake_setup.sql          # Warehouse, dbs, ANALYST role, grants
 │   ├── 02_filter_nppes.py              # DuckDB pre-filter (11.4 GB → 647 MB)
@@ -71,12 +76,27 @@ Validated on every push via the `.github/workflows/dbt-ci.yml` workflow (offline
 │   ├── staging/                        # snake_case cast of each source
 │   ├── intermediate/                   # provider rollups + peer-group stats
 │   └── marts/                          # dim, facts, mart_provider_outliers
-├── seeds/                              # Reference data
-├── tests/                              # Singular tests (none yet)
-├── macros/                             # Reusable Jinja
-└── docs/
+├── seeds/
+│   └── nucc_taxonomy.csv               # NUCC taxonomy → display-name mapping
+├── tests/                              # Singular tests for business invariants
+│   ├── assert_brand_cost_share_within_unit_interval.sql
+│   ├── assert_mart_peer_group_floor_holds.sql
+│   └── assert_mart_outlier_rate_within_reason.sql
+├── macros/
+│   └── outlier_detection.sql           # zscore, modified_zscore, is_outlier
+├── analyses/                           # Ad-hoc SQL examples over the marts
+│   ├── top_outliers.sql
+│   ├── peer_group_diagnostics.sql
+│   └── brand_share_opportunity.sql
+├── scripts/
+│   └── build_docs.sh                   # `dbt docs generate --static` → docs/index.html
+└── docs/                               # Portfolio narrative + static dbt-docs site
+    ├── findings.md                     # 5 analytical findings with reproducible SQL
+    ├── methodology.md                  # Peer-group key, z vs MAD, threshold rationale
+    ├── disclaimer.md                   # "Outlier ≠ allegation"; public-data framing
     ├── data_sources.md                 # URLs, sizes, license, grain per source
-    └── auth_setup.md                   # RSA keygen + ALTER USER walkthrough
+    ├── auth_setup.md                   # RSA keygen + ALTER USER walkthrough
+    └── index.html                      # Static dbt docs site served by GH Pages
 ```
 
 ## Reproduce
@@ -115,7 +135,7 @@ A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags 
 
 ## What's next
 
-- [x] All four model layers built, 56 tests passing
+- [x] All four model layers built, 48 tests passing (45 schema + 3 singular)
 - [x] Methodology refinement (NPPES taxonomy peer groups; Internal Medicine 45% → 32%)
 - [x] CI workflow: offline `dbt parse` on every push
 - [x] dbt docs published to GitHub Pages — served from `docs/index.html`, regenerated via `./scripts/build_docs.sh`
