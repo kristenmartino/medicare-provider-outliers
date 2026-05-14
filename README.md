@@ -70,7 +70,8 @@ Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows
 │   ├── 01_snowflake_setup.sql          # Warehouse, dbs, ANALYST role, grants
 │   ├── 02_filter_nppes.py              # DuckDB pre-filter (11.4 GB → 647 MB)
 │   ├── 03_load_to_snowflake.py         # Stage + COPY INTO via Python connector
-│   └── 04_validate_counts.sql          # Post-load row-count + null sanity
+│   ├── 04_validate_counts.sql          # Post-load row-count + null sanity
+│   └── 05_credit_usage.sql             # Trial credit burn + runway (ACCOUNTADMIN)
 ├── models/
 │   ├── _sources.yml                    # 3 RAW.CMS sources, freshness windows
 │   ├── staging/                        # snake_case cast of each source
@@ -96,6 +97,7 @@ Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows
     ├── disclaimer.md                   # "Outlier ≠ allegation"; public-data framing
     ├── data_sources.md                 # URLs, sizes, license, grain per source
     ├── auth_setup.md                   # RSA keygen + ALTER USER walkthrough
+    ├── hex_notebook_spec.md            # Tab-by-tab Hex build cheat-sheet
     └── index.html                      # Static dbt docs site served by GH Pages
 ```
 
@@ -140,5 +142,5 @@ A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags 
 - [x] CI workflow: offline `dbt parse` on every push
 - [x] dbt docs published to GitHub Pages — served from `docs/index.html`, regenerated via `./scripts/build_docs.sh`
 - [x] Methodology doc + ad-hoc analyses (`docs/methodology.md`, `analyses/*.sql`)
-- [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth
+- [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth. Tab-by-tab SQL cheat-sheet ready at [`docs/hex_notebook_spec.md`](./docs/hex_notebook_spec.md).
 - [ ] Loom walkthrough (5–7 min)
