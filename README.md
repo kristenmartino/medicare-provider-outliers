@@ -12,8 +12,8 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(taxonomy_code × state)` peer groups, n ≥ 30), the marts flag:
 
-- **5.37% (379,048)** as outliers via the robust **MAD method**
-- **2.08% (146,852)** via the classical z-score method (conservative — pulled by the same extreme tails it's trying to detect)
+- **5.23% (369,200)** as outliers via the robust **MAD method**
+- **2.01% (141,766)** via the classical z-score method (conservative — pulled by the same extreme tails it's trying to detect)
 
 The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: **Rushdi Alul** (Emergency Medicine, IL) with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510.
 
@@ -134,6 +134,28 @@ Why both: Medicare cost distributions are heavily right-skewed (a few mega-presc
 **Peer-group floor of n ≥ 30** is enforced in `int_provider__peer_group_stats`. Smaller groups produce noisy MAD/stddev that flag too aggressively.
 
 A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags via the MAD method — that's the default narrative in the Hex notebook. **`is_outlier_any_zscore`** is the conservative counterpart.
+
+**Per-metric coverage gates.** A peer group can pass the `n_providers >= 30` union floor with only a handful of actual Part D prescribers, which would leave the Part D median computed over a thin subpopulation. The mart enforces an additional `peer_n_part_d >= 30` (and the analogous `peer_n_part_b`, `peer_n_brand_share`, `peer_n_avg_cost_per_claim`) at flag-computation time so a provider can never be flagged against a per-metric median with fewer than 30 observations. The counts are exposed in the mart so consumers can audit the denominator behind any flag.
+
+## Who is this for?
+
+The mart is built for three audiences, each of which would consume it differently:
+
+- **Payer / state Medicaid integrity teams** treat `is_outlier_any_mad` as a *triage* signal — a candidate list to be combined with their own beneficiary-overlap, prescribing-relationship-graph, and on-the-ground audit tools. The per-metric peer coverage columns let them drop the noisy long tail (e.g., flags from peer groups under their internal coverage threshold).
+- **Healthcare journalists / policy researchers** use the (specialty × state) ranked outlier table and the geographic state-level rollup to find leads worth investigating publicly. The disclaimer guides the framing.
+- **Hex notebook users (the portfolio audience)** explore the parameterized table — sliding the MAD threshold, switching the metric, drilling from a state choropleth into a single provider's peer-comparison histogram — to understand how peer-group methodology choices change which providers get surfaced.
+
+## Limitations
+
+Reasons not to treat these flags as final answers:
+
+- **Medicare fee-for-service only.** The CMS Provider Data Catalog covers FFS Parts B and D. Medicare Advantage (Part C) and Medicaid are entirely absent. A flagged provider whose patient panel skews Medicare Advantage is being benchmarked on a fragment of their actual practice.
+- **One year (CY 2023).** No trend analysis — a provider whose 2023 spend doubled vs 2022 looks identical to a provider whose 2023 spend doubled three years ago. Multi-year requires re-running the loader against multiple `DY*` files; the schema supports it but the current marts are single-vintage.
+- **Cell suppression.** CMS suppresses any (provider × drug) or (provider × HCPCS) cell with fewer than 11 beneficiaries. Low-volume providers will have systematically incomplete metric totals. Brand-vs-generic share for niche prescribers is particularly affected.
+- **NPPES taxonomy is self-reported.** A meaningful share of NPIs declare a generic "physician" taxonomy when they're actually subspecialists, or never update their taxonomy after a fellowship. Peer groups inherit this noise — a sub-specialist tagged under general internal medicine will be benchmarked against generalists.
+- **Provider attribution.** Many high-volume outliers (especially in Emergency Medicine) are facility-level prescribing aggregated to one attending NPI for billing purposes. The mart can't disentangle this without an external feature (share-of-facility-volume) we don't have. See `docs/findings.md` §1.
+- **Not comparable to OIG / Medicare Fraud Strike Force methodologies.** Those use beneficiary-overlap, prescribing-relationship graphs, and pattern fingerprinting that aren't in this project. Outliers here are a triage list, not adjudicated targets.
+- **No medical-appropriateness signal.** Cost and volume tell you nothing about whether a prescription pattern is clinically defensible. An oncologist treating a rare cancer panel will look extreme on every metric and that's the right call.
 
 ## What's next
 

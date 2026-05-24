@@ -151,17 +151,33 @@ models:
   - name: int_provider__peer_group_stats
     description: |
       Peer-group (taxonomy_code × state) statistics for the six metrics that
-      drive outlier detection. Floors peer groups at n ≥ 30 to avoid
-      indefensible flags on tiny groups. MAD is computed via a two-pass
-      structure (window-broadcast median, then aggregate absolute deviations)
-      because Snowflake doesn't allow nested median() in a single aggregate.
+      drive outlier detection. MAD is computed via a two-pass structure
+      (window-broadcast median, then aggregate absolute deviations) because
+      Snowflake doesn't allow nested median() in a single aggregate.
+
+      `n_providers` counts every NPI in the cell; `n_part_d`, `n_part_b`,
+      `n_brand_share_observed`, and `n_avg_cost_per_claim_observed` count
+      only providers with a non-null value for the corresponding metric.
+      The mart uses the per-metric counts to gate outlier flags so we never
+      flag a provider against a median computed from a thin subpopulation.
+
+      Floors peer groups at `n_providers >= 30` as the first admission
+      gate; per-metric floors are applied downstream in the mart.
+
+      Specialty display name comes from joining `nucc_taxonomy.display_name`
+      on the taxonomy code — deterministic across rebuilds. If a taxonomy
+      code isn't in the NUCC seed, `specialty` falls back to the bare
+      taxonomy code.
     columns:
       - name: canonical_taxonomy_code
         description: NPPES primary taxonomy code — the partition key.
         tests:
           - not_null
       - name: specialty
-        description: NUCC display name for the taxonomy (modal value across the peer group).
+        description: |
+          NUCC display name for the taxonomy code. Deterministic via direct
+          join to the nucc_taxonomy seed; falls back to the taxonomy code
+          itself when no NUCC entry exists.
         tests:
           - not_null
       - name: state
@@ -169,7 +185,36 @@ models:
         tests:
           - not_null
       - name: n_providers
-        description: Number of providers in the peer group. Always ≥ 30.
+        description: Total providers in the peer group (union of NPPES + Part D + Part B). Always >= 30.
+        tests:
+          - not_null
+      - name: n_part_d
+        description: |
+          Providers in the peer group with non-null total_drug_cost — the
+          actual denominator for the Part D mean/stddev/median/MAD.
+          Gates Part D outlier flags in the mart (must be >= 30).
+        tests:
+          - not_null
+      - name: n_part_b
+        description: |
+          Providers in the peer group with non-null total_medicare_payment.
+          Gates Part B outlier flags in the mart (must be >= 30).
+        tests:
+          - not_null
+      - name: n_brand_share_observed
+        description: |
+          Providers in the peer group with a non-null brand_cost_share.
+          Smaller than n_part_d when some Part D prescribers had zero
+          total drug cost (which leaves brand_cost_share undefined).
+          Gates brand-share outlier flags in the mart.
+        tests:
+          - not_null
+      - name: n_avg_cost_per_claim_observed
+        description: |
+          Providers in the peer group with a non-null avg_cost_per_claim.
+          Equal to or smaller than n_part_d depending on whether any
+          prescribers had zero total claims. Gates avg-cost-per-claim
+          outlier flags in the mart.
         tests:
           - not_null
       - name: mean_drug_cost

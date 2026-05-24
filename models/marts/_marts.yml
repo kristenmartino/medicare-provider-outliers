@@ -200,7 +200,34 @@ models:
       - name: part_b_total_services
         description: Total Part B services rendered.
       - name: peer_group_n
-        description: Number of providers in this NPI's (taxonomy × state) peer group. Always ≥ 30.
+        description: |
+          Total providers in this NPI's (taxonomy × state) peer group
+          (union of NPPES + Part D + Part B). Always >= 30.
+        tests:
+          - not_null
+      - name: peer_n_part_d
+        description: |
+          Providers in the peer group with non-null total_drug_cost — the
+          actual denominator for the Part D peer-group statistics. Each
+          Part D outlier flag is gated on this being >= 30.
+        tests:
+          - not_null
+      - name: peer_n_part_b
+        description: |
+          Providers in the peer group with non-null total_medicare_payment.
+          Each Part B outlier flag is gated on this being >= 30.
+        tests:
+          - not_null
+      - name: peer_n_brand_share
+        description: |
+          Providers in the peer group with a non-null brand_cost_share.
+          Gates the brand-share outlier flag.
+        tests:
+          - not_null
+      - name: peer_n_avg_cost_per_claim
+        description: |
+          Providers in the peer group with a non-null avg_cost_per_claim.
+          Gates the avg-cost-per-claim outlier flag.
         tests:
           - not_null
 

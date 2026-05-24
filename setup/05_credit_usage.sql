@@ -93,15 +93,20 @@ SELECT
 FROM usage, recent;
 
 
--- 4. (Optional) Warehouses still consuming credits right now
+-- 4. (Optional) Warehouse configuration snapshot
 -- ----------------------------------------------------------------------------
--- A warehouse with high recent activity and no auto-suspend would be a
--- silent credit drain. This snapshots active sessions.
+-- A warehouse with no auto-suspend would be a silent credit drain. SHOW
+-- WAREHOUSES is the only first-class way to list warehouse config — there is
+-- no INFORMATION_SCHEMA.WAREHOUSES view in Snowflake (a common mistake).
+-- For historical load patterns, query SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_LOAD_HISTORY.
+SHOW WAREHOUSES;
+
+-- Grab the columns we care about via RESULT_SCAN of the last query:
 SELECT
-    name,
-    size,
-    auto_suspend,
-    auto_resume,
-    state
-FROM SNOWFLAKE.INFORMATION_SCHEMA.WAREHOUSES
-ORDER BY name;
+    "name",
+    "size",
+    "auto_suspend",
+    "auto_resume",
+    "state"
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+ORDER BY "name";

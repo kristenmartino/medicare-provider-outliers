@@ -61,8 +61,8 @@ Switching the peer-group key to NPPES `primary_taxonomy_code` (865 NUCC codes, m
 
 | Method | Threshold | Flagged providers | Rate |
 |---|---|---|---|
-| Classical z-score (mean/stddev) | \|z\| ≥ 2.0 | 146,852 | 2.08% |
-| Modified z-score (median/MAD) | \|MAD-z\| ≥ 3.5 | 379,048 | 5.37% |
+| Classical z-score (mean/stddev) | \|z\| ≥ 2.0 | 141,766 | 2.01% |
+| Modified z-score (median/MAD) | \|MAD-z\| ≥ 3.5 | 369,200 | 5.23% |
 
 The methods would flag at comparable rates on a normal distribution. They diverge sharply here because Medicare cost distributions are heavily right-skewed — the few mega-prescribers pull the mean toward themselves and inflate the stddev, making the z-score threshold hard to clear. MAD-based scoring uses the median and median absolute deviation, both robust to the right tail.
 

@@ -1,16 +1,18 @@
 /*
     Singular test: the overall MAD-flag rate in mart_provider_outliers must
-    stay under 10%.
+    stay under 8%.
 
-    On the current methodology and CY 2023 data, the MAD flag rate is ~5.4%.
-    A jump above 10% is a strong signal that something has changed in the
-    threshold, peer-group definition, or the underlying MAD computation —
-    most likely a regression that "lifted" thresholds by replacing MAD with
-    stddev or by using a smaller mad_constant. This test catches that before
-    the marts ship a misleading flagged-provider count to Hex.
+    On the current methodology and CY 2023 data with per-metric coverage
+    gates active, the MAD flag rate is in the ~4-5% range. The 8% ceiling
+    catches the regression modes worth catching:
+      - Removing the per-metric floor pushes the rate sharply up
+      - Replacing MAD with stddev (or shrinking mad_constant) pushes it up
+      - A methodology change that widens peer-group definition pushes it up
 
-    Threshold is generous (current real value is half of it) so the test
-    won't false-fire on natural year-over-year drift.
+    Earlier draft of this test used 10% as the threshold — too loose. A
+    regression that doubled the flag rate to 9.9% would silently pass. 8%
+    is tight enough to surface real changes while still leaving headroom
+    for legitimate year-over-year drift.
 */
 
 with stats as (
@@ -25,4 +27,4 @@ select
     flagged_mad,
     flagged_mad::float / nullif(total, 0)                                            as flag_rate
 from stats
-where flagged_mad::float / nullif(total, 0) >= 0.10
+where flagged_mad::float / nullif(total, 0) >= 0.08

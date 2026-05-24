@@ -2,6 +2,12 @@ name: 'medicare'
 version: '0.1.0'
 config-version: 2
 
+# Pin to dbt-core 1.10+ — the project depends on schema-yml shapes that were
+# deprecated and removed across the 1.7→1.11 line (top-level `freshness:`,
+# bare `accepted_values` args, `period: month`). Cap at <2.0 so a future
+# major upgrade has to be deliberate.
+require-dbt-version: [">=1.10.0", "<2.0.0"]
+
 profile: 'medicare'
 
 # Standard dbt directory layout
