@@ -20,6 +20,16 @@ In a Snowsight worksheet as `ACCOUNTADMIN`:
 
 ### 2. Download CMS files
 
+The URLs below are pinned to the vintage the current marts were built on (Part D / Part B 2023, NPPES April 2026). CMS embeds per-release UUIDs in their CDN paths — those UUIDs change every release and the URLs below will 404 once enough time passes.
+
+**To get current URLs** (e.g., the 2024 vintage CMS published in May 2026):
+
+```bash
+.venv/bin/python setup/02a_resolve_cms_urls.py
+```
+
+The resolver hits `https://data.cms.gov/data.json`, looks up Part D / Part B by dataset title (the stable identifier), HEAD-probes recent NPPES monthly snapshots, and writes [`setup/data_manifest.json`](./data_manifest.json) with the current URLs + sizes. Inspect that file to see what's available, then update the curl URLs below or just paste them into a fresh terminal.
+
 ```bash
 mkdir -p ../data/raw && cd ../data/raw
 

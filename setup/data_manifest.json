@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-25T16:16:48+00:00",
+  "catalog_source": "https://data.cms.gov/data.json",
+  "datasets": {
+    "part_d_prescribers": {
+      "data_year": 2024,
+      "csv_url": "https://data.cms.gov/sites/default/files/2026-05/0ae165f4-eb44-495d-8cac-67f4571b6b83/MUP_DPR_RY26_P04_V10_DY24_NPIBN.csv",
+      "distribution_title": "Medicare Part D Prescribers - by Provider and Drug : 2024-12-01",
+      "media_type": "text/csv",
+      "description": "",
+      "dataset_title": "Medicare Part D Prescribers - by Provider and Drug",
+      "dataset_modified": "2026-05-21"
+    },
+    "part_b_provider_service": {
+      "data_year": 2024,
+      "csv_url": "https://data.cms.gov/sites/default/files/2026-05/b5ebab5a-f490-418a-9bce-4b9f31419356/PHY_R26_P05_V10_D24_Prov_Svc.csv",
+      "distribution_title": "Medicare Physician & Other Practitioners - by Provider and Service : 2024-12-01",
+      "media_type": "text/csv",
+      "description": "",
+      "dataset_title": "Medicare Physician & Other Practitioners - by Provider and Service",
+      "dataset_modified": "2026-05-21"
+    },
+    "nppes": {
+      "data_year": 2026,
+      "month": "May",
+      "csv_url": "https://download.cms.gov/nppes/NPPES_Data_Dissemination_May_2026_V2.zip",
+      "size_bytes": 1131435518,
+      "size_human": "1.13 GB",
+      "dataset_title": "NPPES Data Dissemination V2 (monthly full)"
+    }
+  }
+}
