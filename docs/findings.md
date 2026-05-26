@@ -23,17 +23,24 @@ order by mz_drug_cost desc nulls last limit 10;
 
 ---
 
-## 2. Brand-vs-generic substitution: $24B in addressable excess
+## 2. Brand-vs-generic substitution: $24B *theoretical* excess (and why "addressable" is the wrong word)
 
 For each provider, compare their `brand_cost_share` to their peer-group median. Sum the *excess* — drug cost that would shift to generics if every above-median provider matched their peer median:
 
-**$24.4 billion nationally**. Spread across 1.07M providers (about 11.5% of total Part D spend).
+**$24.4 billion nationally**. Spread across 1.07M providers (about 11.5% of total Part D spend). The largest absolute opportunity is in **Internal Medicine in California ($468M)** and **Physician Assistants in New York ($373M)**.
 
-The largest absolute opportunity is in **Internal Medicine in California ($468M)** and **Physician Assistants in New York ($373M)**. These aren't aspirational; the peer-group median itself is just "what's normal for your specialty and state." The framing is "what if everyone in the right tail looked like the middle of their tail."
+That number is a defensible **upper bound on the search space**, not a realistic savings projection. Treating brand share as a free dial that can be turned down to median requires four assumptions that don't hold in clinical practice:
+
+1. **Therapeutic substitutability.** A meaningful share of brand prescriptions are for drugs with no generic equivalent (recently-approved molecules, biologics with no biosimilar, narrow-therapeutic-index drugs where bioequivalence isn't a free swap). Those rows of the mart will look like "excess brand" but aren't.
+2. **The peer median is a moving target.** Drag the right tail to median and the median itself shifts down. The $24B over-counts because it pretends the baseline is fixed.
+3. **Patient-level continuity.** Patients stabilized on a brand formulation experience real harm from involuntary substitution in some drug classes (anticonvulsants, immunosuppressants, levothyroxine). Net cost should also include readmissions and emergency visits that we don't observe in this data.
+4. **Causal attribution.** A provider with high brand share might be (a) prescribing more brand than peers would for the same patients — actionable; or (b) attracting a sicker patient panel that genuinely needs brand — not actionable. This dataset can't distinguish those.
+
+What the number IS good for: ranking peer groups by where the *gap* is biggest, so a payer policy team or formulary committee knows where to start asking "what's driving this gap?" rather than "how do we eliminate it?" `analyses/brand_share_opportunity.sql` gives the per-(state × specialty) breakdown for that ranking use case.
 
 ```sql
 -- See analyses/brand_share_opportunity.sql for the full per-(state × specialty)
--- breakdown. The headline number aggregates across all peer groups.
+-- breakdown. The headline number is a search-space size, not a savings target.
 ```
 
 ---

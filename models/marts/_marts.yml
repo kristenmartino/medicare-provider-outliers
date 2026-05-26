@@ -353,3 +353,100 @@ models:
         description: True if any metric flags via classical z-score (more conservative).
         tests:
           - not_null
+
+# ----------------------------------------------------------------------------
+# Unit tests on mart_provider_outliers — exercise the outlier-detection
+# macros (`zscore`, `modified_zscore`, `is_outlier`) with crafted input rows
+# and known expected scores. Catches the methodology regressions schema-level
+# tests miss: nested CASE breakage, MAD constant drift, gate logic, etc.
+# ----------------------------------------------------------------------------
+unit_tests:
+
+  - name: mart_outliers_flags_basic_mad_outlier
+    description: |
+      Provider $100k Part D drug cost in a peer group with median $1k and MAD
+      $500 should produce modified-z ≈ 133.55 (0.6745 × 99000 / 500), well
+      above the 3.5 threshold, so outlier_mad_drug_cost should fire and the
+      composite is_outlier_any_mad should be TRUE.
+    model: mart_provider_outliers
+    given:
+      - input: ref('dim_provider')
+        rows:
+          - {npi: '1000000001', provider_full_name: 'Test High Prescriber', taxonomy_code: 'TAX01', specialty: 'Test Specialty', state: 'CA', city: 'LA', part_d_prescriber_flag: true, part_b_provider_flag: false}
+      - input: ref('fct_part_d_provider_year')
+        rows:
+          - {npi: '1000000001', data_year: 2023, total_drug_cost: 100000, total_claims: 100, brand_cost_share: 0.5, avg_cost_per_claim: 1000}
+      - input: ref('fct_part_b_provider_year')
+        rows: []
+      - input: ref('int_provider__peer_group_stats')
+        rows:
+          - {canonical_taxonomy_code: 'TAX01', state: 'CA', n_providers: 100, n_part_d: 100, n_part_b: 0, n_brand_share_observed: 100, n_avg_cost_per_claim_observed: 100,
+             mean_drug_cost: 1500, stddev_drug_cost: 800, median_drug_cost: 1000, mad_drug_cost: 500,
+             mean_part_d_claims: 50, stddev_part_d_claims: 20, median_part_d_claims: 45, mad_part_d_claims: 10,
+             mean_brand_cost_share: 0.4, stddev_brand_cost_share: 0.1, median_brand_cost_share: 0.4, mad_brand_cost_share: 0.05,
+             mean_avg_cost_per_claim: 50, stddev_avg_cost_per_claim: 10, median_avg_cost_per_claim: 50, mad_avg_cost_per_claim: 5,
+             mean_part_b_payment: 0, stddev_part_b_payment: 0, median_part_b_payment: 0, mad_part_b_payment: 0,
+             mean_part_b_services: 0, stddev_part_b_services: 0, median_part_b_services: 0, mad_part_b_services: 0}
+    expect:
+      rows:
+        - {npi: '1000000001', outlier_mad_drug_cost: true, is_outlier_any_mad: true}
+
+  - name: mart_outliers_zero_mad_does_not_flag
+    description: |
+      When peer-group MAD = 0 (every member has the same total_drug_cost),
+      modified_zscore returns NULL by design — there is no meaningful
+      deviation in a constant peer. The per-metric flag stays NULL and the
+      composite is_outlier_any_mad coalesces to FALSE.
+    model: mart_provider_outliers
+    given:
+      - input: ref('dim_provider')
+        rows:
+          - {npi: '2000000002', provider_full_name: 'Test Median Prescriber', taxonomy_code: 'TAX02', specialty: 'Test Specialty 2', state: 'CA', city: 'LA', part_d_prescriber_flag: true, part_b_provider_flag: false}
+      - input: ref('fct_part_d_provider_year')
+        rows:
+          - {npi: '2000000002', data_year: 2023, total_drug_cost: 50000, total_claims: 50, brand_cost_share: 0.4, avg_cost_per_claim: 1000}
+      - input: ref('fct_part_b_provider_year')
+        rows: []
+      - input: ref('int_provider__peer_group_stats')
+        rows:
+          - {canonical_taxonomy_code: 'TAX02', state: 'CA', n_providers: 50, n_part_d: 50, n_part_b: 0, n_brand_share_observed: 50, n_avg_cost_per_claim_observed: 50,
+             mean_drug_cost: 50000, stddev_drug_cost: 0, median_drug_cost: 50000, mad_drug_cost: 0,
+             mean_part_d_claims: 0, stddev_part_d_claims: 0, median_part_d_claims: 0, mad_part_d_claims: 0,
+             mean_brand_cost_share: 0, stddev_brand_cost_share: 0, median_brand_cost_share: 0, mad_brand_cost_share: 0,
+             mean_avg_cost_per_claim: 0, stddev_avg_cost_per_claim: 0, median_avg_cost_per_claim: 0, mad_avg_cost_per_claim: 0,
+             mean_part_b_payment: 0, stddev_part_b_payment: 0, median_part_b_payment: 0, mad_part_b_payment: 0,
+             mean_part_b_services: 0, stddev_part_b_services: 0, median_part_b_services: 0, mad_part_b_services: 0}
+    expect:
+      rows:
+        - {npi: '2000000002', mz_drug_cost: null, outlier_mad_drug_cost: null, is_outlier_any_mad: false}
+
+  - name: mart_outliers_per_metric_floor_suppresses_flag
+    description: |
+      Same outlier-magnitude inputs as test #1, but peer_n_part_d = 20 (below
+      the 30-floor). The modified-z is still computed (math doesn't change),
+      but outlier_mad_drug_cost must be FALSE — flag suppressed by the per-
+      metric coverage gate. The composite is_outlier_any_mad is FALSE since
+      no other metric flags. This is the specific regression that motivated
+      the gate; without these tests it would silently re-emerge.
+    model: mart_provider_outliers
+    given:
+      - input: ref('dim_provider')
+        rows:
+          - {npi: '3000000003', provider_full_name: 'Test Thin Peer', taxonomy_code: 'TAX03', specialty: 'Test Specialty 3', state: 'CA', city: 'LA', part_d_prescriber_flag: true, part_b_provider_flag: false}
+      - input: ref('fct_part_d_provider_year')
+        rows:
+          - {npi: '3000000003', data_year: 2023, total_drug_cost: 100000, total_claims: 100, brand_cost_share: 0.5, avg_cost_per_claim: 1000}
+      - input: ref('fct_part_b_provider_year')
+        rows: []
+      - input: ref('int_provider__peer_group_stats')
+        rows:
+          - {canonical_taxonomy_code: 'TAX03', state: 'CA', n_providers: 100, n_part_d: 20, n_part_b: 0, n_brand_share_observed: 20, n_avg_cost_per_claim_observed: 20,
+             mean_drug_cost: 1500, stddev_drug_cost: 800, median_drug_cost: 1000, mad_drug_cost: 500,
+             mean_part_d_claims: 50, stddev_part_d_claims: 20, median_part_d_claims: 45, mad_part_d_claims: 10,
+             mean_brand_cost_share: 0.4, stddev_brand_cost_share: 0.1, median_brand_cost_share: 0.4, mad_brand_cost_share: 0.05,
+             mean_avg_cost_per_claim: 50, stddev_avg_cost_per_claim: 10, median_avg_cost_per_claim: 50, mad_avg_cost_per_claim: 5,
+             mean_part_b_payment: 0, stddev_part_b_payment: 0, median_part_b_payment: 0, mad_part_b_payment: 0,
+             mean_part_b_services: 0, stddev_part_b_services: 0, median_part_b_services: 0, mad_part_b_services: 0}
+    expect:
+      rows:
+        - {npi: '3000000003', outlier_mad_drug_cost: false, is_outlier_any_mad: false}
