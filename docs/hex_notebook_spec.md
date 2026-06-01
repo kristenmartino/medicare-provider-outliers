@@ -72,6 +72,15 @@ select
     state,
     city,
     peer_group_n,
+    -- per-metric peer coverage behind THIS metric's flag (mart gates on this, not the union count)
+    case '{{metric}}'
+        when 'total_drug_cost'        then peer_n_part_d
+        when 'part_d_total_claims'    then peer_n_part_d
+        when 'brand_cost_share'       then peer_n_brand_share
+        when 'avg_cost_per_claim'     then peer_n_avg_cost_per_claim
+        when 'total_medicare_payment' then peer_n_part_b
+        when 'part_b_total_services'  then peer_n_part_b
+    end                                                          as peer_n_metric,
     {{metric}}                                                   as metric_value,
     case '{{metric}}'
         when 'total_drug_cost'        then mz_drug_cost
@@ -82,8 +91,16 @@ select
         when 'part_b_total_services'  then mz_part_b_services
     end                                                          as modified_z_score
 from analytics.dbt_dev_marts.mart_provider_outliers
-where peer_group_n >= {{min_peer_n}}
-  and {{metric}} is not null
+where {{metric}} is not null
+  -- gate on the SELECTED metric's peer coverage, matching the mart's per-metric floor
+  and case '{{metric}}'
+        when 'total_drug_cost'        then peer_n_part_d
+        when 'part_d_total_claims'    then peer_n_part_d
+        when 'brand_cost_share'       then peer_n_brand_share
+        when 'avg_cost_per_claim'     then peer_n_avg_cost_per_claim
+        when 'total_medicare_payment' then peer_n_part_b
+        when 'part_b_total_services'  then peer_n_part_b
+      end >= {{min_peer_n}}
   {% if specialty_filter|length %}
     and specialty in ({{specialty_filter | inclause}})
   {% endif %}
@@ -105,6 +122,8 @@ limit 1000
 ```
 
 **Widget:** Hex **Table** cell sourced from this query. Configure conditional formatting on `modified_z_score`: red for ≥ 10, orange for 3.5–10, neutral below.
+
+> **Why the per-metric gate:** `min_peer_n` filters on the coverage count *for the selected metric* (`peer_n_part_d` for the Part D metrics, `peer_n_part_b` for Part B, plus the brand-share and avg-cost-per-claim counts) — the same per-metric floor the mart applies when it sets `outlier_mad_*` ([mart_provider_outliers.sql](../models/marts/mart_provider_outliers.sql) lines 121–133). Gating on the union `peer_group_n` instead would let the slider surface a provider flagged against a median computed from only a handful of actual prescribers. `peer_n_metric` is in the table so the denominator behind every flag stays auditable.
 
 ---
 
@@ -133,8 +152,7 @@ with target as (
          and upper(provider_full_name) like upper('%' || '{{search_name}}' || '%'))
 )
 select
-    target.*,
-    p.taxonomy_code,
+    target.*,                       -- already includes taxonomy_code & specialty from the mart
     p.nucc_grouping,
     p.nucc_classification,
     p.nucc_specialization
@@ -151,7 +169,7 @@ limit 25
 with this_provider as (
     select specialty, state, total_drug_cost
     from analytics.dbt_dev_marts.mart_provider_outliers
-    where npi = {{selected_npi}}     -- piped from the table selection
+    where npi = '{{selected_npi}}'   -- piped from the table selection (npi is varchar)
 )
 select
     'this_provider'                       as series,
