@@ -44,7 +44,7 @@ select
 from analytics.dbt_dev_marts.mart_provider_outliers
 ```
 
-**Widget:** seven Hex "Single value" cells, one per metric. Format `*_usd` columns as currency, `pct_*` as percent.
+**Widget:** the query returns **9** values; surface **7** as Single-value tiles — `total_providers_in_mart`, `flagged_mad`, `pct_flagged_mad`, `flagged_zscore`, `pct_flagged_zscore`, `total_part_d_spend_usd`, `total_part_b_spend_usd`. Format `*_usd` as currency, `pct_*` as percent. The two sub-population counts (`part_d_prescribers`, `part_b_providers`) are optional extra tiles, or fold them under tile 1 as a secondary value.
 
 ---
 
