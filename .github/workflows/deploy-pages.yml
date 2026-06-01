@@ -1,0 +1,57 @@
+name: Deploy docs to GitHub Pages
+
+# Publishes the pre-built dbt docs static site to GitHub Pages.
+#
+# The site (docs/index.html) is generated LOCALLY via ./scripts/build_docs.sh
+# (`dbt docs generate --static`) and committed — generating it needs a Snowflake
+# connection, so it can't run in CI without putting a key in repo secrets. This
+# workflow therefore only *publishes* the committed docs/ folder; it never runs
+# `dbt docs generate`. To update the site: regen locally, commit docs/index.html,
+# push. See the README "dbt docs" section.
+#
+# Why this exists instead of GitHub's managed "deploy from a branch" pipeline:
+# that legacy builder retries action downloads only once and flaked on a
+# transient codeload outage (2026-05-26, upload-pages-artifact download failed
+# "after 1 attempts"). A first-class workflow runs on a standard runner with the
+# default download-retry behaviour, can be re-run on demand from the Actions tab
+# (workflow_dispatch), and pins current Node-24 action versions.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+# Least privilege: read the repo, write the Pages deployment, mint the OIDC
+# token deploy-pages uses to authenticate.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time; let an in-flight deploy finish rather than
+# cancelling it (a half-applied deploy is worse than a slightly stale one).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Upload docs/ as Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
