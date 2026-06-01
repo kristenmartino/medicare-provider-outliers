@@ -62,7 +62,9 @@ from analytics.dbt_dev_marts.mart_provider_outliers
 | `metric` | Single-select | `total_drug_cost` | hardcoded options: `total_drug_cost`, `part_d_total_claims`, `brand_cost_share`, `avg_cost_per_claim`, `total_medicare_payment`, `part_b_total_services` |
 | `min_peer_n` | Numeric input | 30 | min 30, max 1000, step 10 |
 
-**SQL cell — Outlier table (Hex Jinja-style):**
+> **Hex Jinja conventions used below.** String inputs are bound as quoted parameters, so: reference a single-select with bare `{{metric}}` (Hex adds the quotes); inject a column *name* with `{{ metric | sqlsafe }}`; expand a multi-select into an `IN (…)` list with `{{ filter | array }}`; guard optional filters with `{% if filter %}`. Numeric inputs (`{{min_peer_n}}`, `{{mad_threshold}}`) interpolate unquoted. ([Hex: parameterize SQL](https://learn.hex.tech/tutorials/connect-to-data/parameterize-sql))
+
+**SQL cell — Outlier table:**
 
 ```sql
 select
@@ -73,7 +75,7 @@ select
     city,
     peer_group_n,
     -- per-metric peer coverage behind THIS metric's flag (mart gates on this, not the union count)
-    case '{{metric}}'
+    case {{metric}}
         when 'total_drug_cost'        then peer_n_part_d
         when 'part_d_total_claims'    then peer_n_part_d
         when 'brand_cost_share'       then peer_n_brand_share
@@ -81,8 +83,8 @@ select
         when 'total_medicare_payment' then peer_n_part_b
         when 'part_b_total_services'  then peer_n_part_b
     end                                                          as peer_n_metric,
-    {{metric}}                                                   as metric_value,
-    case '{{metric}}'
+    {{ metric | sqlsafe }}                                       as metric_value,
+    case {{metric}}
         when 'total_drug_cost'        then mz_drug_cost
         when 'part_d_total_claims'    then mz_part_d_claims
         when 'brand_cost_share'       then mz_brand_cost_share
@@ -91,9 +93,9 @@ select
         when 'part_b_total_services'  then mz_part_b_services
     end                                                          as modified_z_score
 from analytics.dbt_dev_marts.mart_provider_outliers
-where {{metric}} is not null
+where 1=1
   -- gate on the SELECTED metric's peer coverage, matching the mart's per-metric floor
-  and case '{{metric}}'
+  and case {{metric}}
         when 'total_drug_cost'        then peer_n_part_d
         when 'part_d_total_claims'    then peer_n_part_d
         when 'brand_cost_share'       then peer_n_brand_share
@@ -101,14 +103,14 @@ where {{metric}} is not null
         when 'total_medicare_payment' then peer_n_part_b
         when 'part_b_total_services'  then peer_n_part_b
       end >= {{min_peer_n}}
-  {% if specialty_filter|length %}
-    and specialty in ({{specialty_filter | inclause}})
+  {% if specialty_filter %}
+    and specialty in ({{ specialty_filter | array }})
   {% endif %}
-  {% if state_filter|length %}
-    and state in ({{state_filter | inclause}})
+  {% if state_filter %}
+    and state in ({{ state_filter | array }})
   {% endif %}
   and abs(
-    case '{{metric}}'
+    case {{metric}}
         when 'total_drug_cost'        then mz_drug_cost
         when 'part_d_total_claims'    then mz_part_d_claims
         when 'brand_cost_share'       then mz_brand_cost_share
@@ -145,11 +147,11 @@ with target as (
     select *
     from analytics.dbt_dev_marts.mart_provider_outliers
     where
-        ('{{search_npi}}' != '' and npi = '{{search_npi}}')
+        ({{search_npi}} != '' and npi = {{search_npi}})
         or
-        ('{{search_npi}}' = ''
-         and '{{search_name}}' != ''
-         and upper(provider_full_name) like upper('%' || '{{search_name}}' || '%'))
+        ({{search_npi}} = ''
+         and {{search_name}} != ''
+         and upper(provider_full_name) like upper('%' || {{search_name}} || '%'))
 )
 select
     target.*,                       -- already includes taxonomy_code & specialty from the mart
@@ -169,7 +171,7 @@ limit 25
 with this_provider as (
     select specialty, state, total_drug_cost
     from analytics.dbt_dev_marts.mart_provider_outliers
-    where npi = '{{selected_npi}}'   -- piped from the table selection (npi is varchar)
+    where npi = {{selected_npi}}   -- piped from the table selection; Hex binds the value (no manual quotes)
 )
 select
     'this_provider'                       as series,
