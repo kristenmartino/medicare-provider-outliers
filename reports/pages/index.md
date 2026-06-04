@@ -1,8 +1,6 @@
 ---
-title: Overview
+title: Medicare Provider Outliers
 ---
-
-# Medicare Provider Outliers
 
 Cost & volume outlier detection across **7.06M** CMS Part D / Part B providers, scored within `(NPPES taxonomy × state)` peer groups using a robust **MAD modified z-score**. Modeled in dbt on Snowflake; this site is served static from committed extracts — no live warehouse.
 

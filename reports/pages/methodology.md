@@ -2,8 +2,6 @@
 title: Methodology
 ---
 
-# Methodology
-
 ## The question
 
 For each Medicare provider: are their cost and volume metrics within the range of normal variation for **providers of the same specialty practicing in the same state**? If not — by how much, and on which metrics? The output is a per-provider triage signal, **not** a deterministic judgment.

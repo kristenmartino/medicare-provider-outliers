@@ -2,12 +2,10 @@
 title: Provider Drill-Down
 ---
 
-# Provider Drill-Down
-
 A curated set of high-profile outliers. (Full per-NPI lookup over all 7M providers is a live-warehouse feature; this static demo covers six headline cases.)
 
 ```sql providers
-select npi, provider_full_name, specialty, state, city,
+select cast(npi as varchar) as npi, provider_full_name, specialty, state, city,
        total_drug_cost, mz_drug_cost, part_d_total_claims, brand_cost_share,
        total_medicare_payment, peer_group_n
 from medicare.tab3_demo_providers

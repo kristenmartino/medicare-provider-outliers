@@ -2,8 +2,6 @@
 title: Outlier Detection
 ---
 
-# Outlier Detection
-
 Pick a metric — the table re-queries **instantly in your browser** (DuckDB-WASM, no server round-trip). Sort any column, or search by provider, specialty, or state.
 
 ```sql metrics
