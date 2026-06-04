@@ -6,6 +6,8 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 📚 **Live dbt docs: [kristenmartino.github.io/medicare-provider-outliers](https://kristenmartino.github.io/medicare-provider-outliers/)** — interactive lineage graph, model SQL, schema docs, and test coverage.
 
+🔎 **Live data app: [/app](https://kristenmartino.github.io/medicare-provider-outliers/app/)** — interactive outlier explorer: KPIs, a metric-parameterized ranked table, provider drill-down, a state choropleth, and methodology. Built with [Evidence](https://evidence.dev) (BI-as-code: SQL + Markdown → static site), served from committed extracts so it needs no live warehouse.
+
 📝 **Reading order if you only have 5 minutes:** [`docs/findings.md`](./docs/findings.md) → this README → [`docs/methodology.md`](./docs/methodology.md).
 
 ## Headline finding
