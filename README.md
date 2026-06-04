@@ -10,7 +10,7 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 📝 **Reading order if you only have 5 minutes:** [`docs/findings.md`](./docs/findings.md) → this README → [`docs/methodology.md`](./docs/methodology.md).
 
-![Medicare Provider Outlier Explorer — the Hex "Outlier Detection" tab](mockups/hex_dashboard/screenshots/tab2_outliers.png)
+![Medicare Provider Outlier Explorer — the Hex "Outlier Detection" tab](mockups/hex_dashboard/screenshots/tab2_hero_banner.png)
 
 > The **Hex "Outlier Detection" tab** — a metric-parameterized, MAD-threshold-driven ranked table over the 7.06M-row mart, with per-metric peer-coverage gating. *High-fidelity mockup; the full five-tab set (Overview · Outlier Detection · Drill-Down · Geographic · Methodology) is in [`mockups/hex_dashboard/`](./mockups/hex_dashboard/).*
 
