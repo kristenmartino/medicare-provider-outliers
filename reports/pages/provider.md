@@ -28,13 +28,28 @@ where provider_full_name = '${inputs.who.value}'
 
 ## How extreme versus the peer group?
 
-The selected provider's Part D drug cost sits against the full distribution of their `(specialty × state)` peer group. The long right tail is exactly what the MAD modified-z is built to catch:
+The selected provider's Part D drug cost against their `(specialty × state)` peer group, bucketed by cost band. Most peers cluster in the low bands; this provider sits alone in the far-right band — the extreme right-skew the MAD modified-z is designed to catch. (A plain linear histogram is unreadable here: ~all peers collapse into one bar near $0 while a lone outlier stretches the axis to tens of millions.)
 
-```sql peerdist
-select pd.value as peer_drug_cost
-from medicare.tab3_demo_peer_dist pd
-join medicare.tab3_demo_providers p on pd.demo_npi = p.npi
-where p.provider_full_name = '${inputs.who.value}' and pd.series = 'peer_group'
+```sql cost_bands
+with peers as (
+    select pd.value as cost
+    from medicare.tab3_demo_peer_dist pd
+    join medicare.tab3_demo_providers p on pd.demo_npi = p.npi
+    where p.provider_full_name = '${inputs.who.value}' and pd.series = 'peer_group'
+)
+select
+    case
+        when cost < 1000 then '1 · <$1k'
+        when cost < 10000 then '2 · $1k–10k'
+        when cost < 100000 then '3 · $10k–100k'
+        when cost < 1000000 then '4 · $100k–1M'
+        when cost < 10000000 then '5 · $1M–10M'
+        else '6 · ≥$10M'
+    end as cost_band,
+    count(*) as peer_count
+from peers
+group by cost_band
+order by cost_band
 ```
 
-<Histogram data={peerdist} x=peer_drug_cost title="Peer-group Part D drug cost distribution"/>
+<BarChart data={cost_bands} x=cost_band y=peer_count sort=false title="Peers by Part D drug-cost band" subtitle="selected provider's peer group"/>
