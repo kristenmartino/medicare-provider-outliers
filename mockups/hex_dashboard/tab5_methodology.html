@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Methodology · Medicare Provider Outlier Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --canvas:#F7F8FA;--card:#FFFFFF;--border:#E6E8EB;--border-soft:#EFF1F4;
+    --ink:#101828;--ink-2:#344054;--muted:#667085;--muted-2:#98A2B3;
+    --shadow:0 1px 2px rgba(16,24,40,.06);--shadow-md:0 4px 12px rgba(16,24,40,.08);
+    --purple:#5C37EB;--purple-d:#4A29C9;--purple-tint:#EEEBFD;--purple-tint2:#F6F4FE;
+    --amber:#F59E0B;--amber-bg:#FEF3C7;--amber-ink:#B45309;
+    --red:#B42318;--red-bg:#FEE4E2;--red-deep:#912018;
+    --radius:8px;--radius-sm:6px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
+  .tnum{font-variant-numeric:tabular-nums;}
+  .mono{font-family:'Roboto Mono',ui-monospace,SFMono-Regular,monospace;}
+  .app{min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;position:relative;z-index:5;}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .glyph{width:24px;height:24px;flex:none;display:grid;place-items:center;}
+  .brand-title{font-size:13.5px;font-weight:650;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;background:var(--purple-tint);color:var(--purple-d);border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
+  .lastrun{font-size:11.5px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:7px;}
+  .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6E49F0,#4A29C9);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;letter-spacing:.02em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+  .iconbtn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--muted);display:grid;place-items:center;cursor:default;}
+
+  .substrip{background:var(--card);border-bottom:1px solid var(--border);padding:7px 22px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .substrip .src{color:var(--ink-2);font-weight:500;}
+  .substrip .sep{color:var(--muted-2);}
+  .substrip .mono{font-size:11px;color:var(--ink-2);}
+
+  .tabbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:stretch;gap:2px;box-shadow:var(--shadow);position:relative;z-index:4;}
+  .tab{position:relative;display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .12s ease;}
+  .tab:hover{color:var(--ink-2);}
+  .tab.active{color:var(--purple);font-weight:600;border-bottom-color:var(--purple);}
+
+  /* ---------- markdown doc layout ---------- */
+  .doc-wrap{padding:30px 22px 40px;display:flex;justify-content:center;}
+  .doc{width:100%;max-width:752px;}
+  .doc .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--purple-d);background:var(--purple-tint);padding:4px 10px;border-radius:999px;margin-bottom:16px;}
+  .doc h1{font-size:27px;font-weight:720;letter-spacing:-.025em;margin:0 0 10px;color:var(--ink);line-height:1.12;}
+  .doc .lede{font-size:15px;line-height:1.6;color:var(--ink-2);margin:0 0 8px;}
+  .doc .meta-line{font-size:12px;color:var(--muted);margin:0 0 28px;display:flex;align-items:center;gap:8px;}
+  .doc .meta-line .mono{color:var(--ink-2);}
+  .doc .rule{height:1px;background:var(--border);margin:0 0 30px;}
+
+  .sec{margin-bottom:32px;}
+  .sec-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:13px;}
+  .sec-num{flex:none;width:30px;height:30px;border-radius:9px;background:var(--purple);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700;box-shadow:0 1px 3px rgba(92,55,235,.3);}
+  .sec h2{font-size:18px;font-weight:680;letter-spacing:-.018em;margin:3px 0 0;color:var(--ink);}
+  .sec p{font-size:14px;line-height:1.68;color:var(--ink-2);margin:0 0 13px;}
+  .sec p.indent{padding-left:44px;}
+  .sec .body{padding-left:44px;}
+  .sec .body p{margin:0 0 13px;}
+  .sec .body p:last-child{margin-bottom:0;}
+  code.k{font-family:'Roboto Mono',monospace;font-size:12.5px;background:#F2F4F7;color:var(--purple-d);padding:1.5px 6px;border-radius:5px;border:1px solid #EAECF0;}
+  strong{font-weight:650;color:var(--ink);}
+
+  /* formula blocks */
+  .formula{background:linear-gradient(180deg,#FCFCFD,#F8F9FB);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:8px;padding:14px 16px;margin:0 0 14px;}
+  .formula .lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+  .formula .lab .flag{font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--purple-d);background:var(--purple-tint);padding:2px 8px;border-radius:5px;}
+  .formula .eq{font-family:'Roboto Mono',monospace;font-size:15px;color:var(--ink);letter-spacing:-.01em;line-height:1.5;}
+  .formula .eq .op{color:var(--muted);}
+  .formula .eq .hl{color:var(--purple-d);font-weight:500;}
+  .formula .note{font-size:11.5px;color:var(--muted);margin-top:8px;}
+
+  .callout-box{display:flex;gap:12px;background:linear-gradient(180deg,#F7F5FE,#F4F2FC);border:1px solid #DDD5FB;border-radius:10px;padding:15px 17px;margin-top:6px;}
+  .callout-box .ic{flex:none;width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid #DDD5FB;display:grid;place-items:center;color:var(--purple);}
+  .callout-box .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--purple-d);margin:0 0 5px;}
+  .callout-box p{font-size:12.5px;line-height:1.6;color:var(--ink-2);margin:0;}
+
+  .tldr{background:#fff;border:1px solid var(--border);border-radius:10px;padding:15px 17px;margin:0 0 30px;box-shadow:var(--shadow);}
+  .tldr .cap{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+  .tldr ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .tldr li{font-size:13px;line-height:1.5;color:var(--ink-2);padding-left:20px;position:relative;}
+  .tldr li::before{content:"";position:absolute;left:2px;top:7px;width:6px;height:6px;border-radius:2px;background:var(--purple);}
+  .tldr li strong{color:var(--ink);}
+
+  .appfoot{margin-top:auto;border-top:1px solid var(--border);background:var(--card);padding:11px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .appfoot .l{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--muted);}
+  .appfoot .l .hx{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink-2);}
+  .appfoot .l .hx svg{display:block;}
+  .appfoot .sep{color:var(--muted-2);}
+  .appfoot .r{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted-2);}
+  .appfoot .r .mono{font-size:10.5px;color:var(--muted);}
+  .appfoot .dotok{display:inline-flex;align-items:center;gap:6px;color:#067647;font-weight:600;font-size:11px;}
+  .appfoot .dotok .d{width:7px;height:7px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 3px rgba(22,163,74,.14);}
+
+  @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .doc > *{animation:rise .5s cubic-bezier(.2,.7,.3,1) both;}
+  .doc .sec:nth-of-type(1){animation-delay:.05s}
+  .doc .sec:nth-of-type(2){animation-delay:.10s}
+  .doc .sec:nth-of-type(3){animation-delay:.15s}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP BAR (shared) ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="glyph" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 1.6 21 6.8v10.4L12 22.4 3 17.2V6.8L12 1.6Z" fill="#5C37EB"/>
+          <path d="M12 1.6 21 6.8v10.4L12 22.4 3 17.2V6.8L12 1.6Z" fill="url(#g)" fill-opacity=".35"/>
+          <path d="M12 6.4 16.7 9.1v5.8L12 17.6 7.3 14.9V9.1L12 6.4Z" fill="#fff" fill-opacity=".92"/>
+          <path d="M12 6.4 16.7 9.1 12 11.8 7.3 9.1 12 6.4Z" fill="#fff"/>
+          <defs><linearGradient id="g" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        </svg>
+      </span>
+      <span class="brand-title">Medicare Provider Outlier Explorer</span>
+      <span class="pill"><span class="dot"></span>Published app</span>
+    </div>
+    <div class="topbar-right">
+      <span class="lastrun">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Last run: Jun 3, 2026
+      </span>
+      <span class="iconbtn" title="Share" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </span>
+      <span class="avatar">KM</span>
+    </div>
+  </header>
+
+  <!-- ============ SUBTITLE STRIP (shared) ============ -->
+  <div class="substrip">
+    <span>Source:</span>
+    <span class="mono">ANALYTICS.DBT_DEV_MARTS.MART_PROVIDER_OUTLIERS</span>
+    <span class="sep">·</span>
+    <span class="src">7,062,726 rows</span>
+    <span class="sep">·</span>
+    <span>2023 CMS Part D + Part B</span>
+  </div>
+
+  <!-- ============ TAB BAR (shared) ============ -->
+  <nav class="tabbar" aria-label="App tabs">
+    <a class="tab" href="tab1_overview.html">Overview</a>
+    <a class="tab" href="tab2_outliers.html">Outlier Detection</a>
+    <a class="tab" href="tab3_drilldown.html">Provider Drill-Down</a>
+    <a class="tab" href="tab4_geographic.html">Geographic</a>
+    <a class="tab active" href="tab5_methodology.html" aria-current="page">Methodology</a>
+  </nav>
+
+  <!-- ============ DOC ============ -->
+  <main class="doc-wrap">
+    <article class="doc">
+      <span class="eyebrow">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        Methodology
+      </span>
+      <h1>How a provider gets flagged</h1>
+      <p class="lede">
+        Every flag in this app is a <strong>peer-relative statistical position</strong> — computed within a
+        provider's own taxonomy-and-state cohort, using a method built to survive the heavy right skew of
+        Medicare cost data. Three things determine whether a provider is flagged: the peer group, the score, and the coverage gate.
+      </p>
+      <p class="meta-line">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
+        Defined in <span class="mono">models/marts/mart_provider_outliers.sql</span> · thresholds <span class="mono">|z| ≥ 2.0</span>, <span class="mono">|mz| ≥ 3.5</span>, floor <span class="mono">n ≥ 30</span>
+      </p>
+      <div class="rule"></div>
+
+      <!-- TL;DR -->
+      <div class="tldr">
+        <div class="cap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#667085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          In short
+        </div>
+        <ul>
+          <li>Peer groups are keyed on <strong>NPPES taxonomy code × state</strong> — not the noisy free-text CMS specialty label.</li>
+          <li>Flagging uses the <strong>modified z-score (MAD)</strong> at <strong>|mz| ≥ 3.5</strong>, robust to a handful of megaproviders that would distort a classical mean.</li>
+          <li>Each flag is gated on a <strong>per-metric peer-coverage floor of 30</strong>, so no one is judged against a thin median.</li>
+        </ul>
+      </div>
+
+      <!-- Section 1 -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="sec-num">1</span>
+          <h2>Peer groups</h2>
+        </div>
+        <div class="body">
+          <p>
+            Outliers are computed <strong>within</strong> peer groups keyed on
+            <code class="k">NPPES taxonomy_code × state</code> — deliberately <em>not</em> the free-text CMS specialty
+            label. The registry taxonomy is a controlled vocabulary that stays consistent across providers, whereas the
+            specialty text is noisy and frequently mislabeled (the same role appears under a dozen spellings, and
+            self-reported values drift year to year).
+          </p>
+          <p>
+            Anchoring the cohort on the taxonomy code means a provider is always measured against true clinical peers in
+            the same state. The trade-off: the join to peer-group statistics is an <strong>inner join</strong>, so
+            providers without NPPES coverage have no <code class="k">canonical_taxonomy_code</code> and drop out of the
+            mart entirely rather than being scored against a mismatched group.
+          </p>
+        </div>
+      </section>
+
+      <!-- Section 2 -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="sec-num">2</span>
+          <h2>Z-score vs. modified z-score (MAD)</h2>
+        </div>
+        <div class="body">
+          <p>
+            Two scores are computed for every metric. The classical z-score measures distance from the group
+            <strong>mean</strong> in standard deviations:
+          </p>
+
+          <div class="formula">
+            <div class="lab"><span>Classical z-score</span><span class="flag">flag at |z| ≥ 2.0</span></div>
+            <div class="eq"><span class="hl">z</span> <span class="op">=</span> (x <span class="op">−</span> mean) <span class="op">/</span> stddev</div>
+          </div>
+
+          <p>
+            The problem: Medicare cost distributions are <strong>heavily right-skewed</strong>. A few megaproviders
+            inflate both the mean and the standard deviation, which masks genuine outliers and makes the classical score
+            unreliable at the tail. The modified z-score replaces the mean with the <strong>median</strong> and the
+            standard deviation with the <strong>median absolute deviation (MAD)</strong> — both resistant to extreme values:
+          </p>
+
+          <div class="formula">
+            <div class="lab"><span>Modified z-score · Iglewicz &amp; Hoaglin</span><span class="flag">flag at |mz| ≥ 3.5</span></div>
+            <div class="eq"><span class="hl">mz</span> <span class="op">=</span> 0.6745 <span class="op">·</span> (x <span class="op">−</span> median) <span class="op">/</span> MAD</div>
+            <div class="note">The constant 0.6745 rescales MAD so that, for normally distributed data, mz matches the classical z.</div>
+          </div>
+
+          <p>
+            Both flags are additionally gated on a <strong>per-metric peer-coverage floor of 30</strong>. A peer group can
+            clear the admission floor on its total provider count while having only a handful of actual prescribers for a
+            given metric — so each metric's flag checks <em>its own</em> coverage count
+            (<code class="k">peer_n_part_d</code>, <code class="k">peer_n_part_b</code>, and the brand-share and
+            avg-cost counts) before a provider can be flagged. No one is flagged against a median built from a few peers.
+          </p>
+        </div>
+      </section>
+
+      <!-- Section 3 -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="sec-num">3</span>
+          <h2>What an outlier flag means (and doesn't)</h2>
+        </div>
+        <div class="body">
+          <p>
+            A flag is a <strong>statistical position</strong> — a value far from its peer median — and
+            <strong>not an allegation</strong> of fraud, abuse, or wrongdoing. Many entirely legitimate patterns produce
+            extreme scores.
+          </p>
+          <p>
+            The dominant pattern in this dataset is a <strong>single attending NPI absorbing facility-level
+            prescribing</strong>: in many emergency departments, one physician's NPI is attached to the entire
+            department's Part D activity. That is exactly why Emergency-Medicine physicians dominate the drug-cost tail —
+            and why the top row of the leaderboard, <strong>RUSHDI ALUL</strong> at a modified-z of
+            <strong class="tnum">134,510</strong>, reflects a billing structure rather than any individual behavior.
+            The flag tells you <em>where to look</em>, not <em>what you'll find</em>.
+          </p>
+
+          <div class="callout-box">
+            <span class="ic">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+            </span>
+            <div>
+              <p class="t">Disclaimer</p>
+              <p>
+                Built entirely on public CMS Provider-Data-Catalog &amp; NPPES files. No PHI, no claims-level data.
+                "Outlier" is a descriptor, not a determination.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <!-- ============ APP FOOTER (shared) ============ -->
+  <footer class="appfoot">
+    <div class="l">
+      <span class="hx">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2 20.5 7v10L12 22 3.5 17V7L12 2Z" fill="#5C37EB"/><path d="M12 6 16.5 8.5v5L12 16 7.5 13.5v-5L12 6Z" fill="#fff"/></svg>
+        Built with Hex
+      </span>
+      <span class="sep">·</span>
+      <span>Published by Kristen Martino</span>
+      <span class="sep">·</span>
+      <span class="dotok"><span class="d"></span>Live</span>
+    </div>
+    <div class="r">
+      <span class="mono">mart_provider_outliers</span>
+      <span class="sep">·</span>
+      <span>2023 CMS Part D + Part B</span>
+      <span class="sep">·</span>
+      <span>Last run Jun 3, 2026</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

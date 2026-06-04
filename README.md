@@ -10,6 +10,10 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 📝 **Reading order if you only have 5 minutes:** [`docs/findings.md`](./docs/findings.md) → this README → [`docs/methodology.md`](./docs/methodology.md).
 
+![Medicare Provider Outlier Explorer — the Hex "Outlier Detection" tab](mockups/hex_dashboard/screenshots/tab2_outliers.png)
+
+> The **Hex "Outlier Detection" tab** — a metric-parameterized, MAD-threshold-driven ranked table over the 7.06M-row mart, with per-metric peer-coverage gating. *High-fidelity mockup; the full five-tab set (Overview · Outlier Detection · Drill-Down · Geographic · Methodology) is in [`mockups/hex_dashboard/`](./mockups/hex_dashboard/).*
+
 ## Headline finding
 
 Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(taxonomy_code × state)` peer groups, n ≥ 30), the marts flag:
@@ -166,5 +170,5 @@ Reasons not to treat these flags as final answers:
 - [x] CI workflow: offline `dbt parse` on every push
 - [x] dbt docs published to GitHub Pages — served from `docs/index.html`, regenerated via `./scripts/build_docs.sh`
 - [x] Methodology doc + ad-hoc analyses (`docs/methodology.md`, `analyses/*.sql`)
-- [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth. Tab-by-tab SQL cheat-sheet ready at [`docs/hex_notebook_spec.md`](./docs/hex_notebook_spec.md).
+- [ ] Hex notebook — KPI overview, parameterized outlier table, provider drill-down, geographic choropleth. Tab-by-tab SQL cheat-sheet at [`docs/hex_notebook_spec.md`](./docs/hex_notebook_spec.md); high-fidelity five-tab mockup at [`mockups/hex_dashboard/`](./mockups/hex_dashboard/) (live publish pending).
 - [ ] Loom walkthrough (5–7 min)
