@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Geographic · Medicare Provider Outlier Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --canvas:#F7F8FA;--card:#FFFFFF;--border:#E6E8EB;--border-soft:#EFF1F4;
+    --ink:#101828;--ink-2:#344054;--muted:#667085;--muted-2:#98A2B3;
+    --shadow:0 1px 2px rgba(16,24,40,.06);--shadow-md:0 4px 12px rgba(16,24,40,.08);
+    --purple:#5C37EB;--purple-d:#4A29C9;--purple-tint:#EEEBFD;--purple-tint2:#F6F4FE;
+    --amber:#F59E0B;--amber-bg:#FEF3C7;--amber-ink:#B45309;
+    --red:#B42318;--red-bg:#FEE4E2;--red-deep:#912018;
+    --radius:8px;--radius-sm:6px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
+  .tnum{font-variant-numeric:tabular-nums;}
+  .mono{font-family:'Roboto Mono',ui-monospace,SFMono-Regular,monospace;}
+  .app{min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;position:relative;z-index:5;}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .glyph{width:24px;height:24px;flex:none;display:grid;place-items:center;}
+  .brand-title{font-size:13.5px;font-weight:650;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;background:var(--purple-tint);color:var(--purple-d);border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
+  .lastrun{font-size:11.5px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:7px;}
+  .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6E49F0,#4A29C9);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;letter-spacing:.02em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+  .iconbtn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--muted);display:grid;place-items:center;cursor:default;}
+
+  .substrip{background:var(--card);border-bottom:1px solid var(--border);padding:7px 22px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .substrip .src{color:var(--ink-2);font-weight:500;}
+  .substrip .sep{color:var(--muted-2);}
+  .substrip .mono{font-size:11px;color:var(--ink-2);}
+
+  .tabbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:stretch;gap:2px;box-shadow:var(--shadow);position:relative;z-index:4;}
+  .tab{position:relative;display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .12s ease;}
+  .tab:hover{color:var(--ink-2);}
+  .tab.active{color:var(--purple);font-weight:600;border-bottom-color:var(--purple);}
+
+  .page{padding:22px;max-width:1400px;margin:0 auto;width:100%;}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;gap:16px;}
+  .page-title{font-size:19px;font-weight:680;letter-spacing:-.02em;margin:0;color:var(--ink);}
+  .page-sub{font-size:12.5px;color:var(--muted);margin:3px 0 0;}
+  .page-head .meta{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:7px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-head{padding:13px 16px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .card-title{font-size:13px;font-weight:620;color:var(--ink);margin:0;}
+  .card-title .mono{font-weight:500;color:var(--purple-d);font-size:12.5px;}
+  .card-sub{font-size:11.5px;color:var(--muted);margin:2px 0 0;}
+  .card-body{padding:16px;}
+  .cap{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.055em;color:var(--muted);}
+
+  /* inputs */
+  .inputs{background:linear-gradient(180deg,#FCFCFD,#F9FAFB);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 16px;margin-bottom:14px;display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;}
+  .inputs-lead{display:flex;align-items:center;gap:8px;padding-right:8px;margin-right:2px;border-right:1px solid var(--border);align-self:stretch;}
+  .inputs-lead svg{color:var(--purple);}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field > label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.045em;color:var(--muted);}
+  .select{height:32px;min-width:200px;padding:0 32px 0 11px;border:1px solid #D0D5DD;border-radius:7px;background:#fff;font-size:12.5px;font-weight:550;color:var(--ink);display:flex;align-items:center;position:relative;cursor:default;box-shadow:0 1px 1px rgba(16,24,40,.04);}
+  .select .mono{font-size:12px;color:var(--purple-d);font-weight:550;}
+  .select .chev{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted-2);}
+  .ghost-opts{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .ghost{font-size:11px;color:var(--muted-2);background:#fff;border:1px dashed #D7DBE0;border-radius:6px;padding:3px 8px;font-family:'Roboto Mono',monospace;}
+
+  /* layout: map + side panel */
+  .geo{display:grid;grid-template-columns:1fr 332px;gap:14px;align-items:start;}
+
+  /* legend */
+  .map-legend{display:flex;align-items:center;gap:10px;}
+  .grad{width:170px;height:11px;border-radius:6px;background:linear-gradient(90deg,#F3EFFD,#D9CDF8 25%,#A88AF0 50%,#6A44DF 75%,#3C2196);border:1px solid #E6E8EB;}
+  .grad-ends{display:flex;justify-content:space-between;width:170px;margin-top:4px;}
+  .grad-ends span{font-size:9.5px;color:var(--muted-2);font-variant-numeric:tabular-nums;}
+
+  .map-foot{padding:11px 16px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+
+  /* spend callout */
+  .callout{margin-top:0;background:linear-gradient(180deg,#FFFFFF,#FCFBFF);border:1px solid #DDD5FB;border-radius:10px;padding:13px 14px;box-shadow:var(--shadow);}
+  .callout .cap{display:flex;align-items:center;gap:7px;color:var(--purple-d);}
+  .callout .cap svg{color:var(--purple);}
+  .spend-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px;}
+  .spend-item{display:flex;align-items:baseline;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:7px;padding:8px 10px;}
+  .spend-item .s{font-size:12px;font-weight:700;color:var(--ink-2);}
+  .spend-item .v{font-size:13.5px;font-weight:700;color:var(--purple-d);font-variant-numeric:tabular-nums;}
+  .callout .hint{font-size:11px;color:var(--muted);margin:10px 0 0;display:flex;gap:7px;}
+  .callout .hint svg{flex:none;margin-top:1px;color:var(--amber);}
+
+  /* ranked bar list */
+  .rank-list{display:flex;flex-direction:column;}
+  .rank-row{display:grid;grid-template-columns:24px 30px 1fr 52px;align-items:center;gap:9px;padding:6.5px 0;}
+  .rank-row .rk{font-size:11px;font-weight:700;color:var(--muted-2);text-align:right;font-variant-numeric:tabular-nums;}
+  .rank-row .st{font-size:11.5px;font-weight:700;color:var(--ink-2);}
+  .rank-row .bar{height:9px;background:#F2F4F7;border-radius:999px;overflow:hidden;}
+  .rank-row .bar > i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#7B5BF0,var(--purple));}
+  .rank-row .val{font-size:11.5px;font-weight:700;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
+  .rank-div{display:flex;align-items:center;gap:8px;margin:9px 0 5px;}
+  .rank-div .ln{flex:1;height:1px;background:var(--border-soft);}
+  .rank-div .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-2);}
+  .rank-row.low .bar > i{background:linear-gradient(90deg,#CBBDF6,#A88AF0);}
+  .rank-row.low .st,.rank-row.low .val{color:var(--muted);}
+
+  .appfoot{margin-top:auto;border-top:1px solid var(--border);background:var(--card);padding:11px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .appfoot .l{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--muted);}
+  .appfoot .l .hx{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink-2);}
+  .appfoot .l .hx svg{display:block;}
+  .appfoot .sep{color:var(--muted-2);}
+  .appfoot .r{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted-2);}
+  .appfoot .r .mono{font-size:10.5px;color:var(--muted);}
+  .appfoot .dotok{display:inline-flex;align-items:center;gap:6px;color:#067647;font-weight:600;font-size:11px;}
+  .appfoot .dotok .d{width:7px;height:7px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 3px rgba(22,163,74,.14);}
+
+  @keyframes rise{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+  .reveal{animation:rise .42s cubic-bezier(.2,.7,.3,1) both;}
+  .d1{animation-delay:.05s}.d2{animation-delay:.11s}.d3{animation-delay:.17s}
+  .usmap{display:block;width:100%;max-width:660px;height:auto;margin:2px auto 0;}
+
+  @media (max-width:1100px){.geo{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP BAR (shared) ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="glyph" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 1.6 21 6.8v10.4L12 22.4 3 17.2V6.8L12 1.6Z" fill="#5C37EB"/>
+          <path d="M12 1.6 21 6.8v10.4L12 22.4 3 17.2V6.8L12 1.6Z" fill="url(#g)" fill-opacity=".35"/>
+          <path d="M12 6.4 16.7 9.1v5.8L12 17.6 7.3 14.9V9.1L12 6.4Z" fill="#fff" fill-opacity=".92"/>
+          <path d="M12 6.4 16.7 9.1 12 11.8 7.3 9.1 12 6.4Z" fill="#fff"/>
+          <defs><linearGradient id="g" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        </svg>
+      </span>
+      <span class="brand-title">Medicare Provider Outlier Explorer</span>
+      <span class="pill"><span class="dot"></span>Published app</span>
+    </div>
+    <div class="topbar-right">
+      <span class="lastrun">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Last run: Jun 3, 2026
+      </span>
+      <span class="iconbtn" title="Share" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </span>
+      <span class="avatar">KM</span>
+    </div>
+  </header>
+
+  <!-- ============ SUBTITLE STRIP (shared) ============ -->
+  <div class="substrip">
+    <span>Source:</span>
+    <span class="mono">ANALYTICS.DBT_DEV_MARTS.MART_PROVIDER_OUTLIERS</span>
+    <span class="sep">·</span>
+    <span class="src">7,062,726 rows</span>
+    <span class="sep">·</span>
+    <span>2023 CMS Part D + Part B</span>
+  </div>
+
+  <!-- ============ TAB BAR (shared) ============ -->
+  <nav class="tabbar" aria-label="App tabs">
+    <a class="tab" href="tab1_overview.html">Overview</a>
+    <a class="tab" href="tab2_outliers.html">Outlier Detection</a>
+    <a class="tab" href="tab3_drilldown.html">Provider Drill-Down</a>
+    <a class="tab active" href="tab4_geographic.html" aria-current="page">Geographic</a>
+    <a class="tab" href="tab5_methodology.html">Methodology</a>
+  </nav>
+
+  <!-- ============ PAGE ============ -->
+  <main class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Geographic</h1>
+        <p class="page-sub">State-level outlier flag rates and absolute Medicare spend across all 7.06M provider-years.</p>
+      </div>
+      <div class="meta">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
+        59 states &amp; territories aggregated
+      </div>
+    </div>
+
+    <!-- inputs -->
+    <section class="inputs" aria-label="Map inputs">
+      <div class="inputs-lead">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span class="cap">Inputs</span>
+      </div>
+      <div class="field">
+        <label>geo_metric</label>
+        <div class="select"><span class="mono">pct_flagged_mad</span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div class="field">
+        <label>Other options</label>
+        <div class="ghost-opts">
+          <span class="ghost">pct_flagged_zscore</span>
+          <span class="ghost">total_part_d_spend</span>
+          <span class="ghost">total_part_b_spend</span>
+          <span class="ghost">n_providers</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- map + side panel -->
+    <section class="geo">
+
+      <!-- choropleth card -->
+      <div class="card reveal d1">
+        <div class="card-head">
+          <div>
+            <h3 class="card-title">% providers flagged (MAD) by state — <span class="mono">pct_flagged_mad</span></h3>
+            <p class="card-sub">Tile-grid map · purple intensity ∝ flag rate · USPS codes</p>
+          </div>
+          <div class="map-legend">
+            <span class="cap" style="letter-spacing:.04em;">low</span>
+            <div>
+              <div class="grad"></div>
+              <div class="grad-ends"><span>2.1%</span><span>8.0%</span></div>
+            </div>
+            <span class="cap" style="letter-spacing:.04em;">high</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:14px 16px 8px;">
+          <!-- ===== TILE-GRID US MAP (generated) ===== -->
+          <svg class="usmap" viewBox="0 0 800 584" role="img" aria-label="US tile-grid choropleth of percent of providers flagged by the MAD method, shaded purple from 2.1 percent to 8.0 percent. Mississippi is darkest at 8.0 percent; the Deep South and parts of the Midwest run high; California and the District of Columbia are lightest.">
+            <g transform="translate(8,8)"><rect width="64" height="64" rx="9" fill="#EBE5FB"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">AK</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">2.5</text></g>
+            <g transform="translate(728,8)"><rect width="64" height="64" rx="9" fill="#724AE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">ME</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(656,80)"><rect width="64" height="64" rx="9" fill="#C4B1F4"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">VT</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.2</text></g>
+            <g transform="translate(728,80)"><rect width="64" height="64" rx="9" fill="#8F6CEC"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">NH</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.6</text></g>
+            <g transform="translate(8,152)"><rect width="64" height="64" rx="9" fill="#CBBAF5"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">WA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.1</text></g>
+            <g transform="translate(80,152)"><rect width="64" height="64" rx="9" fill="#9573ED"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">ID</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.5</text></g>
+            <g transform="translate(152,152)"><rect width="64" height="64" rx="9" fill="#9574ED"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">MT</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.5</text></g>
+            <g transform="translate(224,152)"><rect width="64" height="64" rx="9" fill="#C6B3F5"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">ND</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.2</text></g>
+            <g transform="translate(296,152)"><rect width="64" height="64" rx="9" fill="#9574ED"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">MN</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.5</text></g>
+            <g transform="translate(368,152)"><rect width="64" height="64" rx="9" fill="#7851E9"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">IL</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.2</text></g>
+            <g transform="translate(440,152)"><rect width="64" height="64" rx="9" fill="#764FE9"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">WI</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.2</text></g>
+            <g transform="translate(512,152)"><rect width="64" height="64" rx="9" fill="#BCA5F3"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">MI</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.5</text></g>
+            <g transform="translate(584,152)"><rect width="64" height="64" rx="9" fill="#9D7DEE"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">NY</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.3</text></g>
+            <g transform="translate(656,152)"><rect width="64" height="64" rx="9" fill="#8C69EC"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">RI</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.7</text></g>
+            <g transform="translate(728,152)"><rect width="64" height="64" rx="9" fill="#AD90F1"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">MA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">4.9</text></g>
+            <g transform="translate(8,224)"><rect width="64" height="64" rx="9" fill="#CFC0F6"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">OR</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.9</text></g>
+            <g transform="translate(80,224)"><rect width="64" height="64" rx="9" fill="#E5DDFA"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">NV</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">2.9</text></g>
+            <g transform="translate(152,224)"><rect width="64" height="64" rx="9" fill="#D8CCF7"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">WY</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.6</text></g>
+            <g transform="translate(224,224)"><rect width="64" height="64" rx="9" fill="#613DD0"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">SD</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.8</text></g>
+            <g transform="translate(296,224)"><rect width="64" height="64" rx="9" fill="#5A38C6"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">IA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.0</text></g>
+            <g transform="translate(368,224)"><rect width="64" height="64" rx="9" fill="#7952E9"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">IN</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.2</text></g>
+            <g transform="translate(440,224)"><rect width="64" height="64" rx="9" fill="#BEA8F3"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">OH</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.4</text></g>
+            <g transform="translate(512,224)"><rect width="64" height="64" rx="9" fill="#5B39C8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">PA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.0</text></g>
+            <g transform="translate(584,224)"><rect width="64" height="64" rx="9" fill="#8763EB"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">NJ</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.8</text></g>
+            <g transform="translate(656,224)"><rect width="64" height="64" rx="9" fill="#734CE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">CT</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(8,296)"><rect width="64" height="64" rx="9" fill="#D9CDF8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">CA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.6</text></g>
+            <g transform="translate(80,296)"><rect width="64" height="64" rx="9" fill="#D1C2F6"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">UT</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.9</text></g>
+            <g transform="translate(152,296)"><rect width="64" height="64" rx="9" fill="#BCA6F3"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">CO</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.5</text></g>
+            <g transform="translate(224,296)"><rect width="64" height="64" rx="9" fill="#E4DCFA"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">NE</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">2.9</text></g>
+            <g transform="translate(296,296)"><rect width="64" height="64" rx="9" fill="#6A43DE"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">MO</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.5</text></g>
+            <g transform="translate(368,296)"><rect width="64" height="64" rx="9" fill="#724AE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">KY</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(440,296)"><rect width="64" height="64" rx="9" fill="#E6DEFA"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">WV</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">2.8</text></g>
+            <g transform="translate(512,296)"><rect width="64" height="64" rx="9" fill="#734BE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">VA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(584,296)"><rect width="64" height="64" rx="9" fill="#BEA8F3"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">MD</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.4</text></g>
+            <g transform="translate(656,296)"><rect width="64" height="64" rx="9" fill="#9C7CEE"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">DE</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.3</text></g>
+            <g transform="translate(80,368)"><rect width="64" height="64" rx="9" fill="#7048E8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">AZ</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(152,368)"><rect width="64" height="64" rx="9" fill="#DED3F9"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">NM</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.3</text></g>
+            <g transform="translate(224,368)"><rect width="64" height="64" rx="9" fill="#734CE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">KS</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(296,368)"><rect width="64" height="64" rx="9" fill="#C0ABF4"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">AR</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.4</text></g>
+            <g transform="translate(368,368)"><rect width="64" height="64" rx="9" fill="#5836C3"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">TN</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.1</text></g>
+            <g transform="translate(440,368)"><rect width="64" height="64" rx="9" fill="#5B38C7"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">NC</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.0</text></g>
+            <g transform="translate(512,368)"><rect width="64" height="64" rx="9" fill="#5B38C6"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">SC</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.0</text></g>
+            <g transform="translate(584,368)"><rect width="64" height="64" rx="9" fill="#F3EFFD" stroke="#E6E0FA" stroke-width="1"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">DC</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">2.1</text></g>
+            <g transform="translate(224,440)"><rect width="64" height="64" rx="9" fill="#CDBCF6"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">OK</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">4.0</text></g>
+            <g transform="translate(296,440)"><rect width="64" height="64" rx="9" fill="#6641D9"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">LA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.7</text></g>
+            <g transform="translate(368,440)"><rect width="64" height="64" rx="9" fill="#3C2196"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">MS</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">8.0</text></g>
+            <g transform="translate(440,440)"><rect width="64" height="64" rx="9" fill="#4B2CAD"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">AL</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">7.5</text></g>
+            <g transform="translate(512,440)"><rect width="64" height="64" rx="9" fill="#6943DD"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">GA</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.6</text></g>
+            <g transform="translate(8,512)"><rect width="64" height="64" rx="9" fill="#D9CDF8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#3A2A6B" letter-spacing=".02em">HI</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#6B5BA0" font-variant-numeric="tabular-nums" opacity=".95">3.6</text></g>
+            <g transform="translate(224,512)"><rect width="64" height="64" rx="9" fill="#734BE8"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">TX</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">6.3</text></g>
+            <g transform="translate(584,512)"><rect width="64" height="64" rx="9" fill="#8460EB"/><text x="32" y="27" text-anchor="middle" font-family="Inter" font-size="14.5" font-weight="700" fill="#FFFFFF" letter-spacing=".02em">FL</text><text x="32" y="44" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="600" fill="#FFFFFF" font-variant-numeric="tabular-nums" opacity=".95">5.9</text></g>
+          </svg>
+        </div>
+        <div class="map-foot">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Schematic tile-grid — 50 states + DC, USPS codes, positions approximate; PR &amp; other territories are in the aggregates but not mapped. Shading reflects exact <span class="mono" style="font-size:10.5px;color:var(--ink-2);">pct_flagged_mad</span>.
+        </div>
+      </div>
+
+      <!-- side panel: ranked list + spend callout -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card reveal d2">
+          <div class="card-head">
+            <div>
+              <h3 class="card-title">States by MAD flag rate</h3>
+              <p class="card-sub">% of providers flagged · top 12</p>
+            </div>
+          </div>
+          <div class="card-body" style="padding:12px 16px 14px;">
+            <div class="rank-list">
+              <div class="rank-row"><span class="rk">1</span><span class="st">MS</span><span class="bar"><i style="width:100%"></i></span><span class="val">8.00%</span></div>
+              <div class="rank-row"><span class="rk">2</span><span class="st">AL</span><span class="bar"><i style="width:94.1%"></i></span><span class="val">7.53%</span></div>
+              <div class="rank-row"><span class="rk">3</span><span class="st">TN</span><span class="bar"><i style="width:88.8%"></i></span><span class="val">7.10%</span></div>
+              <div class="rank-row"><span class="rk">4</span><span class="st">IA</span><span class="bar"><i style="width:88.0%"></i></span><span class="val">7.04%</span></div>
+              <div class="rank-row"><span class="rk">5</span><span class="st">SC</span><span class="bar"><i style="width:87.9%"></i></span><span class="val">7.03%</span></div>
+              <div class="rank-row"><span class="rk">6</span><span class="st">NC</span><span class="bar"><i style="width:87.6%"></i></span><span class="val">7.01%</span></div>
+              <div class="rank-row"><span class="rk">7</span><span class="st">PA</span><span class="bar"><i style="width:87.5%"></i></span><span class="val">7.00%</span></div>
+              <div class="rank-row"><span class="rk">8</span><span class="st">LA</span><span class="bar"><i style="width:83.3%"></i></span><span class="val">6.66%</span></div>
+              <div class="rank-row"><span class="rk">9</span><span class="st">GA</span><span class="bar"><i style="width:82.1%"></i></span><span class="val">6.57%</span></div>
+              <div class="rank-row"><span class="rk">10</span><span class="st">AZ</span><span class="bar"><i style="width:79.3%"></i></span><span class="val">6.34%</span></div>
+              <div class="rank-row"><span class="rk">11</span><span class="st">TX</span><span class="bar"><i style="width:78.5%"></i></span><span class="val">6.28%</span></div>
+              <div class="rank-row"><span class="rk">12</span><span class="st">IL</span><span class="bar"><i style="width:77.1%"></i></span><span class="val">6.17%</span></div>
+
+              <div class="rank-div"><span class="lbl">lowest</span><span class="ln"></span></div>
+              <div class="rank-row low"><span class="rk">50</span><span class="st">CA</span><span class="bar"><i style="width:44.6%"></i></span><span class="val">3.57%</span></div>
+              <div class="rank-row low"><span class="rk">51</span><span class="st">DC</span><span class="bar"><i style="width:26.4%"></i></span><span class="val">2.11%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- spend callout -->
+        <div class="callout reveal d3">
+          <span class="cap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Highest absolute Part D spend
+          </span>
+          <div class="spend-grid">
+            <div class="spend-item"><span class="s">CA</span><span class="v">$20.7B</span></div>
+            <div class="spend-item"><span class="s">NY</span><span class="v">$17.2B</span></div>
+            <div class="spend-item"><span class="s">FL</span><span class="v">$15.4B</span></div>
+            <div class="spend-item"><span class="s">TX</span><span class="v">$14.6B</span></div>
+          </div>
+          <p class="hint">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            Flag <em style="font-style:normal;font-weight:600;color:var(--ink-2);">rate</em> and spend rank differently — CA leads on absolute spend yet sits near the <em style="font-style:normal;font-weight:600;color:var(--ink-2);">lowest</em> flag rate (3.57%).
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ APP FOOTER (shared) ============ -->
+  <footer class="appfoot">
+    <div class="l">
+      <span class="hx">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2 20.5 7v10L12 22 3.5 17V7L12 2Z" fill="#5C37EB"/><path d="M12 6 16.5 8.5v5L12 16 7.5 13.5v-5L12 6Z" fill="#fff"/></svg>
+        Built with Hex
+      </span>
+      <span class="sep">·</span>
+      <span>Published by Kristen Martino</span>
+      <span class="sep">·</span>
+      <span class="dotok"><span class="d"></span>Live</span>
+    </div>
+    <div class="r">
+      <span class="mono">mart_provider_outliers</span>
+      <span class="sep">·</span>
+      <span>2023 CMS Part D + Part B</span>
+      <span class="sep">·</span>
+      <span>Last run Jun 3, 2026</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

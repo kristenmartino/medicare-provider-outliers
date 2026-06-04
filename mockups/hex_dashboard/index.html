@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Medicare Provider Outlier Explorer — Hex app mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --canvas:#F7F8FA;--card:#FFFFFF;--border:#E6E8EB;--border-soft:#EFF1F4;
+    --ink:#101828;--ink-2:#344054;--muted:#667085;--muted-2:#98A2B3;
+    --shadow:0 1px 2px rgba(16,24,40,.06);--shadow-md:0 6px 20px rgba(16,24,40,.10);
+    --purple:#5C37EB;--purple-d:#4A29C9;--purple-tint:#EEEBFD;--purple-tint2:#F6F4FE;
+    --red:#B42318;--red-bg:#FEE4E2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+    background:
+      radial-gradient(1200px 520px at 78% -10%, #EFEBFD 0%, rgba(239,235,253,0) 60%),
+      radial-gradient(900px 480px at 8% 110%, #F0EEFB 0%, rgba(240,238,251,0) 55%),
+      var(--canvas);
+  }
+  .mono{font-family:'Roboto Mono',ui-monospace,SFMono-Regular,monospace;}
+  .tnum{font-variant-numeric:tabular-nums;}
+  .wrap{max-width:1100px;margin:0 auto;padding:54px 28px 56px;}
+
+  .head{display:flex;align-items:flex-start;gap:16px;margin-bottom:8px;}
+  .glyph{width:46px;height:46px;flex:none;display:grid;place-items:center;background:#fff;border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);}
+  .head h1{font-size:30px;font-weight:720;letter-spacing:-.03em;margin:0;line-height:1.1;color:var(--ink);}
+  .head .pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;background:var(--purple-tint);color:var(--purple-d);border-radius:999px;font-size:11.5px;font-weight:600;vertical-align:middle;margin-left:10px;}
+  .head .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--purple);}
+  .head p{font-size:14.5px;color:var(--ink-2);margin:8px 0 0;max-width:680px;line-height:1.6;}
+
+  .src-line{font-size:12px;color:var(--muted);margin:18px 0 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .src-line .mono{color:var(--ink-2);font-size:11.5px;}
+  .src-line .sep{color:var(--muted-2);}
+  .src-line .chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-weight:600;color:var(--ink-2);}
+
+  .meta-strip{display:flex;gap:10px;margin:26px 0 30px;flex-wrap:wrap;}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow);min-width:150px;}
+  .stat .k{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+  .stat .v{font-size:21px;font-weight:700;letter-spacing:-.02em;color:var(--ink);margin-top:3px;}
+  .stat .v.p{color:var(--purple-d);}
+  .stat .v.r{color:var(--red);}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .ccard{display:flex;flex-direction:column;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-decoration:none;color:inherit;transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;}
+  .ccard:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:#D9CFFB;}
+  .ccard .thumb{height:128px;border-bottom:1px solid var(--border-soft);background:linear-gradient(180deg,#FCFCFD,#F6F7F9);position:relative;overflow:hidden;}
+  .ccard .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:5px;flex:1;}
+  .ccard .tnum-badge{font-size:10.5px;font-weight:700;color:var(--purple-d);background:var(--purple-tint);border-radius:6px;padding:2px 8px;width:fit-content;letter-spacing:.03em;}
+  .ccard h3{font-size:15px;font-weight:660;margin:4px 0 0;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:8px;}
+  .ccard p{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5;}
+  .ccard .open{margin-top:auto;padding-top:10px;font-size:12px;font-weight:600;color:var(--purple);display:flex;align-items:center;gap:5px;}
+  .ccard:hover .open svg{transform:translateX(3px);}
+  .ccard .open svg{transition:transform .16s ease;}
+
+  .footer{margin-top:34px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:18px;}
+  .footer .mono{color:var(--ink-2);}
+
+  /* mini thumbnails (schematic previews of each tab) */
+  .thumb svg{position:absolute;inset:0;width:100%;height:100%;}
+
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .ccard{animation:rise .5s cubic-bezier(.2,.7,.3,1) both;}
+  .ccard:nth-child(1){animation-delay:.04s}
+  .ccard:nth-child(2){animation-delay:.09s}
+  .ccard:nth-child(3){animation-delay:.14s}
+  .ccard:nth-child(4){animation-delay:.19s}
+  .ccard:nth-child(5){animation-delay:.24s}
+
+  @media (max-width:880px){.grid{grid-template-columns:1fr 1fr;}}
+  @media (max-width:560px){.grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <span class="glyph" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+          <path d="M12 1.6 21 6.8v10.4L12 22.4 3 17.2V6.8L12 1.6Z" fill="#5C37EB"/>
+          <path d="M12 6.4 16.7 9.1v5.8L12 17.6 7.3 14.9V9.1L12 6.4Z" fill="#fff" fill-opacity=".94"/>
+          <path d="M12 6.4 16.7 9.1 12 11.8 7.3 9.1 12 6.4Z" fill="#fff"/>
+        </svg>
+      </span>
+      <div>
+        <h1>Medicare Provider Outlier Explorer<span class="pill"><span class="dot"></span>Published app</span></h1>
+        <p>A 5-tab Hex data app over a 7.06M-row Snowflake mart — CMS Medicare provider-outlier analysis built on the dbt model <span class="mono" style="font-size:13px;color:var(--purple-d);">mart_provider_outliers</span>. Open any tab below.</p>
+        <div class="src-line">
+          <span class="chip">dbt → Snowflake → Hex</span>
+          <span class="sep">·</span>
+          <span class="mono">ANALYTICS.DBT_DEV_MARTS.MART_PROVIDER_OUTLIERS</span>
+          <span class="sep">·</span>
+          <span>2023 CMS Part D + Part B</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="meta-strip">
+      <div class="stat"><div class="k">Provider-years</div><div class="v tnum">7,062,726</div></div>
+      <div class="stat"><div class="k">Flagged · MAD</div><div class="v p tnum">369,200</div></div>
+      <div class="stat"><div class="k">Top modified-z</div><div class="v r tnum">134,510</div></div>
+      <div class="stat"><div class="k">States &amp; terr.</div><div class="v tnum">59</div></div>
+    </div>
+
+    <nav class="grid" aria-label="Dashboard tabs">
+
+      <!-- Tab 1 -->
+      <a class="ccard" href="tab1_overview.html">
+        <div class="thumb">
+          <svg viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect x="18" y="20" width="64" height="40" rx="6" fill="#fff" stroke="#E6E8EB"/>
+            <rect x="90" y="20" width="64" height="40" rx="6" fill="#F6F4FE" stroke="#D9CFFB"/>
+            <rect x="162" y="20" width="64" height="40" rx="6" fill="#fff" stroke="#E6E8EB"/>
+            <rect x="234" y="20" width="64" height="40" rx="6" fill="#fff" stroke="#E6E8EB"/>
+            <rect x="26" y="28" width="30" height="6" rx="3" fill="#E4E7EC"/>
+            <rect x="26" y="40" width="42" height="11" rx="3" fill="#101828"/>
+            <rect x="98" y="40" width="42" height="11" rx="3" fill="#5C37EB"/>
+            <rect x="18" y="72" width="170" height="40" rx="6" fill="#fff" stroke="#E6E8EB"/>
+            <rect x="196" y="72" width="102" height="40" rx="6" fill="#fff" stroke="#E6E8EB"/>
+            <circle cx="60" cy="96" r="3.5" fill="#5C37EB"/>
+            <path d="M60 96 L150 88" stroke="#5C37EB" stroke-width="1.5" stroke-dasharray="4 3" opacity=".5"/>
+            <rect x="206" y="100" width="50" height="5" rx="2.5" fill="#7B5BF0"/>
+            <rect x="206" y="90" width="34" height="5" rx="2.5" fill="#A78BF4"/>
+          </svg>
+        </div>
+        <div class="body">
+          <span class="tnum-badge">TAB 1</span>
+          <h3>Overview</h3>
+          <p>Seven KPI tiles, the multi-year trend stub, and top flagged specialties.</p>
+          <span class="open">Open tab <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+
+      <!-- Tab 2 -->
+      <a class="ccard" href="tab2_outliers.html">
+        <div class="thumb">
+          <svg viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect x="18" y="16" width="284" height="18" rx="5" fill="#F9FAFB" stroke="#E6E8EB"/>
+            <rect x="26" y="22" width="40" height="6" rx="3" fill="#5C37EB"/>
+            <rect x="78" y="22" width="26" height="6" rx="3" fill="#D0D5DD"/>
+            <rect x="116" y="22" width="30" height="6" rx="3" fill="#D0D5DD"/>
+            <!-- rows with red mz chips -->
+            <g>
+              <rect x="18" y="44" width="284" height="16" rx="3" fill="#fff"/>
+              <rect x="26" y="49" width="60" height="6" rx="3" fill="#344054"/>
+              <rect x="250" y="46" width="46" height="12" rx="3" fill="#7A140E"/>
+              <rect x="18" y="62" width="284" height="16" rx="3" fill="#FAFAFE"/>
+              <rect x="26" y="67" width="54" height="6" rx="3" fill="#344054"/>
+              <rect x="254" y="64" width="42" height="12" rx="3" fill="#9A1B12"/>
+              <rect x="18" y="80" width="284" height="16" rx="3" fill="#fff"/>
+              <rect x="26" y="85" width="58" height="6" rx="3" fill="#344054"/>
+              <rect x="256" y="82" width="40" height="12" rx="3" fill="#B42318"/>
+              <rect x="18" y="98" width="284" height="16" rx="3" fill="#FAFAFE"/>
+              <rect x="26" y="103" width="50" height="6" rx="3" fill="#344054"/>
+              <rect x="258" y="100" width="38" height="12" rx="3" fill="#B42318"/>
+            </g>
+          </svg>
+        </div>
+        <div class="body">
+          <span class="tnum-badge">TAB 2 · hero</span>
+          <h3>Outlier Detection</h3>
+          <p>Parameterized leaderboard — the blood-red modified-z of <span class="tnum mono" style="font-size:11.5px;color:var(--red);">134,510</span>.</p>
+          <span class="open">Open tab <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+
+      <!-- Tab 3 -->
+      <a class="ccard" href="tab3_drilldown.html">
+        <div class="thumb">
+          <svg viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <line x1="30" y1="108" x2="300" y2="108" stroke="#E6E8EB" stroke-width="1.5"/>
+            <!-- tall left bar (peer pile-up) -->
+            <rect x="34" y="28" width="22" height="80" rx="2" fill="#9C7EF2"/>
+            <rect x="58" y="104" width="14" height="4" rx="1" fill="#C7BFF6"/>
+            <!-- dashed median -->
+            <line x1="40" y1="24" x2="40" y2="112" stroke="#475467" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <!-- empty middle -->
+            <line x1="80" y1="80" x2="270" y2="80" stroke="#D0D5DD" stroke-width="1" stroke-dasharray="2 5"/>
+            <!-- ALUL marker far right -->
+            <rect x="284" y="30" width="10" height="78" rx="2" fill="#B42318"/>
+            <path d="M289 30 C 289 18, 230 22, 210 28" fill="none" stroke="#B42318" stroke-width="1.2" stroke-dasharray="3 2"/>
+            <rect x="150" y="18" width="60" height="14" rx="4" fill="#B42318"/>
+          </svg>
+        </div>
+        <div class="body">
+          <span class="tnum-badge">TAB 3</span>
+          <h3>Provider Drill-Down</h3>
+          <p>One provider vs. its peer distribution — the empty $1.4M–$84M gap.</p>
+          <span class="open">Open tab <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+
+      <!-- Tab 4 -->
+      <a class="ccard" href="tab4_geographic.html">
+        <div class="thumb">
+          <svg viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <g>
+              <rect x="120" y="16" width="18" height="18" rx="4" fill="#724AE8"/>
+              <rect x="64" y="38" width="18" height="18" rx="4" fill="#9573ED"/>
+              <rect x="86" y="38" width="18" height="18" rx="4" fill="#7851E9"/>
+              <rect x="108" y="38" width="18" height="18" rx="4" fill="#764FE9"/>
+              <rect x="130" y="38" width="18" height="18" rx="4" fill="#9D7DEE"/>
+              <rect x="152" y="38" width="18" height="18" rx="4" fill="#8C69EC"/>
+              <rect x="64" y="60" width="18" height="18" rx="4" fill="#5A38C6"/>
+              <rect x="86" y="60" width="18" height="18" rx="4" fill="#7952E9"/>
+              <rect x="108" y="60" width="18" height="18" rx="4" fill="#5B39C8"/>
+              <rect x="130" y="60" width="18" height="18" rx="4" fill="#8763EB"/>
+              <rect x="42" y="82" width="18" height="18" rx="4" fill="#D9CDF8"/>
+              <rect x="64" y="82" width="18" height="18" rx="4" fill="#6A43DE"/>
+              <rect x="86" y="82" width="18" height="18" rx="4" fill="#3C2196"/>
+              <rect x="108" y="82" width="18" height="18" rx="4" fill="#4B2CAD"/>
+              <rect x="130" y="82" width="18" height="18" rx="4" fill="#6943DD"/>
+              <!-- mini ranked bars -->
+              <rect x="200" y="24" width="90" height="6" rx="3" fill="#5C37EB"/>
+              <rect x="200" y="38" width="80" height="6" rx="3" fill="#6E49F0"/>
+              <rect x="200" y="52" width="72" height="6" rx="3" fill="#7B5BF0"/>
+              <rect x="200" y="66" width="64" height="6" rx="3" fill="#9476F2"/>
+              <rect x="200" y="84" width="38" height="6" rx="3" fill="#C7BFF6"/>
+              <rect x="200" y="96" width="24" height="6" rx="3" fill="#D9CDF8"/>
+            </g>
+          </svg>
+        </div>
+        <div class="body">
+          <span class="tnum-badge">TAB 4</span>
+          <h3>Geographic</h3>
+          <p>State choropleth on <span class="mono" style="font-size:11px;color:var(--purple-d);">pct_flagged_mad</span> — MS leads at 8.0%.</p>
+          <span class="open">Open tab <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+
+      <!-- Tab 5 -->
+      <a class="ccard" href="tab5_methodology.html">
+        <div class="thumb">
+          <svg viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect x="60" y="18" width="44" height="9" rx="4" fill="#EEEBFD" stroke="#D9CFFB"/>
+            <rect x="60" y="34" width="170" height="11" rx="3" fill="#101828"/>
+            <rect x="60" y="54" width="200" height="6" rx="3" fill="#D0D5DD"/>
+            <rect x="60" y="64" width="184" height="6" rx="3" fill="#D0D5DD"/>
+            <!-- formula block -->
+            <rect x="60" y="80" width="200" height="30" rx="5" fill="#F8F9FB" stroke="#E6E8EB"/>
+            <rect x="60" y="80" width="3" height="30" fill="#5C37EB"/>
+            <rect x="70" y="88" width="30" height="5" rx="2" fill="#98A2B3"/>
+            <rect x="70" y="98" width="120" height="7" rx="3" fill="#5C37EB"/>
+          </svg>
+        </div>
+        <div class="body">
+          <span class="tnum-badge">TAB 5</span>
+          <h3>Methodology</h3>
+          <p>Peer groups, z vs. MAD, and what a flag means — with the disclaimer.</p>
+          <span class="open">Open tab <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+
+      <!-- info card (6th cell, balances the 3x2 grid) -->
+      <div class="ccard" style="cursor:default;background:linear-gradient(180deg,#FFFFFF,#FBFAFF);border-style:dashed;border-color:#D9CFFB;">
+        <div class="body" style="justify-content:center;gap:9px;padding:20px;">
+          <span class="tnum-badge" style="background:#F2F4F7;color:var(--muted);">About this mockup</span>
+          <p style="font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+            High-fidelity static recreation of a published Hex app for a data / analytics-engineering portfolio.
+            Real public CMS values; all charts are inline SVG.
+          </p>
+          <p style="font-size:11px;color:var(--muted-2);margin-top:2px;">Last run: Jun 3, 2026 · KM</p>
+        </div>
+      </div>
+
+    </nav>
+
+    <div class="footer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+      Built entirely on public CMS Provider-Data-Catalog &amp; NPPES files. No PHI, no claims-level data. "Outlier" is a descriptor, not a determination.
+    </div>
+  </div>
+</body>
+</html>
