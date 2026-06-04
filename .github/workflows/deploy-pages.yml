@@ -1,38 +1,33 @@
 name: Deploy docs to GitHub Pages
 
-# Publishes the pre-built dbt docs static site to GitHub Pages.
+# Publishes two things to one GitHub Pages site:
+#   /        the pre-built dbt docs static site (committed under docs/)
+#   /app     the Evidence data app, built fresh in CI from reports/
 #
-# The site (docs/index.html) is generated LOCALLY via ./scripts/build_docs.sh
-# (`dbt docs generate --static`) and committed — generating it needs a Snowflake
-# connection, so it can't run in CI without putting a key in repo secrets. This
-# workflow therefore only *publishes* the committed docs/ folder; it never runs
-# `dbt docs generate`. To update the site: regen locally, commit docs/index.html,
-# push. See the README "dbt docs" section.
+# dbt docs are generated LOCALLY (`dbt docs generate --static` needs a Snowflake
+# connection) and committed under docs/. The Evidence app is BUILT IN CI from
+# committed CSV extracts (reports/sources/medicare/*.csv) — no warehouse needed —
+# so its ~87 MB of bundled assets (DuckDB-WASM + data) never lands in git.
 #
-# Why this exists instead of GitHub's managed "deploy from a branch" pipeline:
-# that legacy builder retries action downloads only once and flaked on a
-# transient codeload outage (2026-05-26, upload-pages-artifact download failed
-# "after 1 attempts"). A first-class workflow runs on a standard runner with the
-# default download-retry behaviour, can be re-run on demand from the Actions tab
-# (workflow_dispatch), and pins current Node-24 action versions.
+# Why a first-class workflow (not GitHub's managed "deploy from a branch"): that
+# legacy builder retries action downloads only once and flaked on a transient
+# codeload outage (2026-05-26). This runs on a standard runner with default
+# retry behaviour and can be re-run on demand via the Actions tab.
 
 on:
   push:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'reports/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
-# Least privilege: read the repo, write the Pages deployment, mint the OIDC
-# token deploy-pages uses to authenticate.
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# One Pages deployment at a time; let an in-flight deploy finish rather than
-# cancelling it (a half-applied deploy is worse than a slightly stale one).
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -40,17 +35,37 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Upload docs/ as Pages artifact
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: reports/package-lock.json
+
+      - name: Build Evidence app (serves at /app)
+        working-directory: reports
+        run: |
+          npm ci
+          npm run sources
+          npm run build
+
+      - name: Assemble site — dbt docs at root, Evidence at /app
+        run: |
+          rm -rf _site && mkdir -p _site
+          cp -R docs/. _site/
+          rm -rf _site/app && mkdir -p _site/app
+          cp -R reports/build/. _site/app/
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: docs
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
