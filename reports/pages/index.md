@@ -20,7 +20,7 @@ from medicare.tab1_overview_kpis
 <BigValue data={kpis} value=pct_flagged_mad title="MAD outlier rate" fmt='0.00"%"'/>
 <BigValue data={kpis} value=flagged_zscore title="z-score outliers" fmt='#,##0'/>
 <BigValue data={kpis} value=pct_flagged_zscore title="z-score rate" fmt='0.00"%"'/>
-<BigValue data={kpis} value=part_d_spend_b title="Part D spend ($B)" fmt='usd0.0'/>
+<BigValue data={kpis} value=part_d_spend_b title="Part D spend ($B)" fmt='usd1'/>
 
 ## Robust beats classical on skewed cost data
 
