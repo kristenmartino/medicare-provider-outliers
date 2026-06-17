@@ -12,7 +12,7 @@ from medicare.tab3_demo_providers
 order by mz_drug_cost desc
 ```
 
-<Dropdown data={providers} name=who value=provider_full_name defaultValue="RUSHDI ALUL" title="Provider"/>
+<Dropdown data={providers} name=who value=provider_full_name defaultValue="STEPHANIE HAN" title="Provider"/>
 
 ```sql selected
 select * from medicare.tab3_demo_providers
