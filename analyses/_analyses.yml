@@ -80,3 +80,39 @@ analyses:
         description: Mean brand_cost_share across providers in this cell.
       - name: peer_median_brand_share
         description: Median brand_cost_share for the peer group (broadcast — same value across the cell).
+
+  - name: gtm_brand_switch_targets
+    description: |
+      Commercial re-skin of brand_share_opportunity at PROVIDER grain — a ranked
+      account list for a brand→generic/biosimilar substitution sell. Same
+      excess-brand-cost math, sized per provider, with an ICP filter (real Part D
+      prescriber, peer coverage n ≥ 30, ≥ $250k drug cost, ≥ 10-point brand-share
+      gap vs peer median) and an artifact guardrail that drops the facility-billing
+      right tail (docs/findings.md §1). Ranked by sized opportunity, tiered, top 200.
+    columns:
+      - name: priority_tier
+        description: 'Tier by sized_opportunity_usd: Tier 1 (≥$1M), Tier 2 ($250k–$1M), Tier 3 (<$250k).'
+      - name: npi
+        description: National Provider Identifier of the target prescriber.
+      - name: provider_full_name
+        description: '"{first} {last}" from NPPES; NPI fallback if names are blank.'
+      - name: specialty
+        description: NUCC display name for the provider's primary taxonomy (half the peer-group key).
+      - name: state
+        description: USPS state abbreviation (the other half of the peer-group key).
+      - name: city
+        description: Practice city.
+      - name: total_drug_cost_usd
+        description: Provider's total Part D drug cost (USD), rounded.
+      - name: brand_share_pct
+        description: Provider's brand_cost_share as a whole-number percent.
+      - name: peer_median_pct
+        description: Peer-group median brand_cost_share as a whole-number percent.
+      - name: gap_pts
+        description: Percentage-point gap between the provider and the peer median brand share.
+      - name: sized_opportunity_usd
+        description: brand_share_gap × total_drug_cost — drug cost that shifts to lower-cost equivalents if the provider matched peer-median brand mix.
+      - name: peer_group_n
+        description: Size of the (taxonomy × state) peer group (always ≥ 30).
+      - name: talking_point
+        description: Sales-ready one-liner with the brand-share contrast and the sized opportunity.
