@@ -45,8 +45,8 @@ WAREHOUSE = "DBT_XS_WH"
 DATABASE = "ANALYTICS"
 KEY_PATH = Path.home() / ".snowflake" / "keys" / "dbt_rsa_key.p8"
 
-MART = "analytics.dbt_dev_marts.mart_provider_outliers"
-DIM = "analytics.dbt_dev_marts.dim_provider"
+MART = "analytics.marts.mart_provider_outliers"
+DIM = "analytics.marts.dim_provider"
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "docs" / "hex_data"
 

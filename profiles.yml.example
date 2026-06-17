@@ -22,7 +22,7 @@ medicare:
       role: ANALYST
       warehouse: DBT_XS_WH
       database: ANALYTICS
-      schema: dbt_dev          # personal sandbox schema; dbt creates layer schemas as <schema>_staging etc.
+      schema: dbt_dev          # default schema; the generate_schema_name macro maps each layer to a clean ANALYTICS.STAGING / INTERMEDIATE / MARTS / SEEDS schema
 
       threads: 4
       client_session_keep_alive: false

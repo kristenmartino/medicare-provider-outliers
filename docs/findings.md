@@ -2,7 +2,7 @@
 
 Five analytical findings from `mart_provider_outliers` on **CY 2023** data. Each is reproducible from a single SQL query against the marts.
 
-> All dollar figures are USD totals across the 2023 Medicare data year. Total Part D drug cost across 1.10M prescribers = **$213B**. Total Part B Medicare payment across 1.11M physicians = **$73B**. The findings here surface the variation, not the aggregate.
+> All dollar figures are USD totals across the 2023 Medicare data year, summed over the providers that land in the mart (those with NPPES taxonomy coverage). Total Part D drug cost across the **1.07M** Part D prescribers in the mart = **$205.7B**; total Part B Medicare payment across the **1.08M** Part B physicians = **$69.8B** (from `tab1_overview_kpis`). The findings here surface the variation, not the aggregate.
 
 ---
 
@@ -81,13 +81,13 @@ In a portfolio-quality outlier model on Medicare-style data, the MAD method is t
 
 | State | MAD-flag rate | Providers in mart |
 |---|---|---|
-| **MS** | **8.3%** | 37,783 |
-| **AL** | **7.8%** | 64,279 |
-| **TN** | **7.3%** | 120,885 |
+| **MS** | **8.00%** | 37,783 |
+| **AL** | **7.53%** | 64,279 |
+| **TN** | **7.10%** | 120,885 |
 | ... | ... | ... |
-| **NV** | 3.0% | 95,546 |
-| **AK** | 2.8% | 26,576 |
-| **DC** | 2.5% | 43,885 |
+| **NV** | 2.88% | 95,546 |
+| **AK** | 2.54% | 26,576 |
+| **DC** | 2.11% | 43,885 |
 
 States with higher MAD-flag rates are concentrated in the Southeast — a pattern consistent with the rural-health and Medicare-spending-variation literature (cf. [Dartmouth Atlas](https://www.dartmouthatlas.org/), CMS Geographic Variation reports). The peer-group key already controls for specialty mix; what's left is genuine geographic dispersion in prescribing intensity, brand-vs-generic mix, and service utilization.
 

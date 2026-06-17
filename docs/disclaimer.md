@@ -22,7 +22,7 @@ Many legitimate, defensible patterns produce extreme outlier scores in this kind
 
 Every name attached to an NPI in this project comes from the **public NPPES NPI Registry**, where it has been published by the provider themselves under the registry's data-dissemination policy. Every dollar figure comes from the **public CMS Provider Data Catalog**, which CMS publishes precisely so that researchers and journalists can perform analyses like this one. No PHI, no de-identified claims-level data, and no restricted-use file is touched anywhere in the DAG.
 
-Suppression of cells with fewer than 11 beneficiaries (per CMS policy) is honored by the staging layer.
+CMS suppresses the beneficiary count for cells with fewer than 11 beneficiaries (per CMS policy); the staging layer preserves these rows and surfaces explicit suppression flags rather than dropping them — cost and claim totals remain valid.
 
 ## Use this responsibly
 
