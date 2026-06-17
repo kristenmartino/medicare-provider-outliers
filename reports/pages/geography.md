@@ -2,7 +2,7 @@
 title: Geography
 ---
 
-MAD outlier rate and Medicare spend by provider state. Outlier rates cluster in the South (MS, AL, TN) — a pattern worth pairing with prescribing-norm and patient-mix context before reading anything into it.
+MAD outlier rate and Medicare spend by provider state — a regional lens for steering audit or reporting attention before drilling into specific peer groups. Outlier rates cluster in the South (MS, AL, TN), a pattern worth pairing with prescribing-norm and patient-mix context before reading anything into it.
 
 ```sql states
 select

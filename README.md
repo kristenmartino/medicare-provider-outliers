@@ -21,7 +21,7 @@ Of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(t
 - **5.23% (369,200)** as outliers via the robust **MAD method**
 - **2.01% (141,766)** via the classical z-score method (conservative — pulled by the same extreme tails it's trying to detect)
 
-The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: **Rushdi Alul** (Emergency Medicine, IL) with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510.
+The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: the highest-billing **Emergency Medicine provider in IL**, with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510, almost certainly facility-level prescribing aggregated to one attending NPI.
 
 > **"Outlier" is a statistical descriptor, not an allegation.** Every name in this dataset is from the public NPPES registry; every dollar figure is from the public CMS Provider Data Catalog. Defensible patterns (facility-level prescribing aggregated to an attending NPI, sub-specialists in generic taxonomies, oncology panels) produce extreme scores. See [`docs/disclaimer.md`](./docs/disclaimer.md).
 
