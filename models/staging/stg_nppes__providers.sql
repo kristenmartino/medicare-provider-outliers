@@ -39,7 +39,6 @@ renamed as (
             when '363' then 'Advanced Practice'
             when '174' then 'Other Service Provider'
             when '333' then 'Supplier'
-            when '333' then 'Supplier'
             when '291' then 'Laboratory'
             when '171' then 'Other Service Provider'
             when '193' then 'Group'
