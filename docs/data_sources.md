@@ -10,7 +10,7 @@ All sources are public, free, and require no DUA. **Direct URLs below are pinned
 - **Size:** ~3.6 GB, ~25 M rows
 - **Grain:** one row per (NPI × drug × year)
 - **License:** Public domain (US Government Work)
-- **Notes:** CMS suppresses cells with <11 beneficiaries — denoted by `*` or empty values; the COPY INTO file format treats these as nulls, and staging models drop suppressed rows.
+- **Notes:** CMS suppresses the *beneficiary count* for cells with <11 beneficiaries — denoted by `*` or empty values; the COPY INTO file format treats these as nulls. Staging keeps these rows (cost and claim totals remain valid); only the suppressed beneficiary count is null.
 
 ## Medicare Physician & Other Practitioners — by Provider and Service
 

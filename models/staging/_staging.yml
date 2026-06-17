@@ -98,10 +98,6 @@ models:
           - accepted_values:
               arguments:
                 values: ['I', 'O']
-      - name: provider_address_line_1
-        description: Billing address line 1.
-      - name: provider_address_line_2
-        description: Billing address line 2.
       - name: provider_city
         description: Billing city.
       - name: provider_state

@@ -2,7 +2,7 @@
 
 Tab-by-tab build plan for the [`mart_provider_outliers`](https://github.com/kristenmartino/medicare-provider-outliers/blob/main/models/marts/mart_provider_outliers.sql) explorer. Each tab section lists the Hex input variables, a ready-to-paste SQL cell, and the chart / widget recommendation.
 
-> **Schema note.** The SQL below references `ANALYTICS.DBT_DEV_MARTS.*` because that's the dev-target schema dbt builds into with the current `profiles.yml`. If you eventually add a `prod` target whose schemas collapse to `marts` / `intermediate` (via a custom `generate_schema_name` macro), swap the prefix. For Hex's "Hobby" workspace there's no real downside to staying on the dev schema.
+> **Schema note.** The SQL below references `ANALYTICS.MARTS.*`. A custom `generate_schema_name` macro (`macros/generate_schema_name.sql`) maps each dbt layer to a clean schema, so models build into `ANALYTICS.STAGING` / `INTERMEDIATE` / `MARTS` regardless of target.
 
 > **Offline / trial-expiry note.** Every SQL cell below re-queries Snowflake on each viewer interaction, so the published app's interactivity dies when the free-trial warehouse lapses (~2026-06-06). The small result set behind each interactive cell is pre-materialized to a committed CSV under [`docs/hex_data/`](./hex_data/) (via [`setup/06_extract_hex_static.py`](../setup/06_extract_hex_static.py)) so the app keeps working with **no live warehouse**. See [**Static / offline mode**](#static--offline-mode-surviving-snowflake-trial-expiry) for the rewired cells and fidelity notes — wire those in before you publish if the warehouse is near expiry.
 
@@ -43,7 +43,7 @@ select
     round(100.0 * count_if(is_outlier_any_zscore) / count(*),2) as pct_flagged_zscore,
     round(sum(total_drug_cost), 0)                              as total_part_d_spend_usd,
     round(sum(total_medicare_payment), 0)                       as total_part_b_spend_usd
-from analytics.dbt_dev_marts.mart_provider_outliers
+from analytics.marts.mart_provider_outliers
 ```
 
 **Widget:** the query returns **9** values; surface **7** as Single-value tiles — `total_providers_in_mart`, `flagged_mad`, `pct_flagged_mad`, `flagged_zscore`, `pct_flagged_zscore`, `total_part_d_spend_usd`, `total_part_b_spend_usd`. Format `*_usd` as currency, `pct_*` as percent. The two sub-population counts (`part_d_prescribers`, `part_b_providers`) are optional extra tiles, or fold them under tile 1 as a secondary value.
@@ -94,7 +94,7 @@ select
         when 'total_medicare_payment' then mz_part_b_payment
         when 'part_b_total_services'  then mz_part_b_services
     end                                                          as modified_z_score
-from analytics.dbt_dev_marts.mart_provider_outliers
+from analytics.marts.mart_provider_outliers
 where 1=1
   -- gate on the SELECTED metric's peer coverage, matching the mart's per-metric floor
   and case {{metric}}
@@ -147,7 +147,7 @@ limit 1000
 ```sql
 with target as (
     select *
-    from analytics.dbt_dev_marts.mart_provider_outliers
+    from analytics.marts.mart_provider_outliers
     where
         ({{search_npi}} != '' and npi = {{search_npi}})
         or
@@ -161,7 +161,7 @@ select
     p.nucc_classification,
     p.nucc_specialization
 from target
-left join analytics.dbt_dev_marts.dim_provider p using (npi)
+left join analytics.marts.dim_provider p using (npi)
 limit 25
 ```
 
@@ -172,7 +172,7 @@ limit 25
 ```sql
 with this_provider as (
     select specialty, state, total_drug_cost
-    from analytics.dbt_dev_marts.mart_provider_outliers
+    from analytics.marts.mart_provider_outliers
     where npi = {{selected_npi}}   -- piped from the table selection; Hex binds the value (no manual quotes)
 )
 select
@@ -183,7 +183,7 @@ union all
 select
     'peer_group'                          as series,
     mpo.total_drug_cost                   as value
-from analytics.dbt_dev_marts.mart_provider_outliers mpo
+from analytics.marts.mart_provider_outliers mpo
 join this_provider tp
   on mpo.specialty = tp.specialty
  and mpo.state     = tp.state
@@ -216,7 +216,7 @@ select
     round(100.0 * count_if(is_outlier_any_zscore) / count(*), 2)  as pct_flagged_zscore,
     round(sum(total_drug_cost), 0)                                as total_part_d_spend,
     round(sum(total_medicare_payment), 0)                         as total_part_b_spend
-from analytics.dbt_dev_marts.mart_provider_outliers
+from analytics.marts.mart_provider_outliers
 where state is not null
 group by state
 order by state

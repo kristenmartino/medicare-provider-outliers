@@ -37,7 +37,7 @@ The MAD method's sensitivity to right-skewed Medicare cost distributions is the 
 | Transformation | dbt Core 1.11 on Python 3.13 | dbt-snowflake 1.11.4 |
 | BI / notebook | Hex (Hobby tier) | Snowflake-native connector |
 | Docs | dbt docs static site | [Live on GitHub Pages](https://kristenmartino.github.io/medicare-provider-outliers/), regenerated via `./scripts/build_docs.sh` |
-| Tests | 48 dbt tests (45 schema + 3 singular) | All green |
+| Tests | 59 dbt tests (53 schema + 3 singular + 3 unit) | All green |
 | CI | GitHub Actions, offline `dbt parse` | Catches SQL / ref / source breaks without needing warehouse creds in repo secrets |
 
 ## Architecture
@@ -60,9 +60,9 @@ flowchart LR
 |---|---|---|---|
 | Seeds | 1 (NUCC taxonomy) | ~2s | 3 |
 | Staging | 3 views | < 5s | 14 |
-| Intermediate | 4 tables | 25s | 13 |
-| Marts | 4 tables | 18s | 15 |
-| **Total** | **11 models + 1 seed + 3 analyses** | **~55s** | **48 / 48 passing** (45 schema + 3 singular) |
+| Intermediate | 4 tables | 25s | 17 |
+| Marts | 4 tables | 18s | 19 |
+| **Total** | **11 models + 1 seed + 3 analyses** | **~55s** | **59 / 59 passing** (53 schema + 3 singular + 3 unit) |
 
 Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows/dbt-ci.yml). The workflow runs `dbt parse` offline against a stub profile — no Snowflake credentials live in repo secrets. This catches SQL syntax errors, broken `{{ ref }}` / `{{ source }}` lookups, and stale schema-yml columns before they ever hit the warehouse; running real tests in CI would require provisioning a CI-scoped Snowflake user with key-pair auth, which is the right next step once the project leaves portfolio mode.
 
@@ -74,7 +74,7 @@ Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows
 │   └── dbt-ci.yml                      # Offline `dbt parse` on every push
 ├── setup/                              # One-time Snowflake bootstrap
 │   ├── 01_snowflake_setup.sql          # Warehouse, dbs, ANALYST role, grants
-│   ├── 02_filter_nppes.py              # DuckDB pre-filter (11.4 GB → 647 MB)
+│   ├── 02_filter_nppes.py              # DuckDB pre-filter (11.4 GB → ~1.5 GB)
 │   ├── 03_load_to_snowflake.py         # Stage + COPY INTO via Python connector
 │   ├── 04_validate_counts.sql          # Post-load row-count + null sanity
 │   └── 05_credit_usage.sql             # Trial credit burn + runway (ACCOUNTADMIN)
@@ -165,7 +165,7 @@ Reasons not to treat these flags as final answers:
 
 ## What's next
 
-- [x] All four model layers built, 48 tests passing (45 schema + 3 singular)
+- [x] All four model layers built, 59 tests passing (53 schema + 3 singular + 3 unit)
 - [x] Methodology refinement (NPPES taxonomy peer groups; Internal Medicine 45% → 32%)
 - [x] CI workflow: offline `dbt parse` on every push
 - [x] dbt docs published to GitHub Pages — served from `docs/index.html`, regenerated via `./scripts/build_docs.sh`

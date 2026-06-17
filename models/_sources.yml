@@ -19,8 +19,10 @@ sources:
       - name: part_d_prescribers
         description: |
           Medicare Part D Prescriber by Provider and Drug. Annual file.
-          One row per (NPI × drug × year). Cells with <11 beneficiaries
-          are suppressed by CMS — those rows are dropped in staging.
+          One row per (NPI × drug × year). CMS suppresses the beneficiary
+          COUNT for cells with <11 benes (sentinel `*`/empty -> null); staging
+          KEEPS these rows — cost and claim totals stay valid, only the
+          beneficiary count is null.
         identifier: PART_D_PRESCRIBERS
         config:
           freshness:

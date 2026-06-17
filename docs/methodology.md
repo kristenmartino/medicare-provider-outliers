@@ -63,7 +63,7 @@ $$z = \frac{x - \mu}{\sigma}$$
 
 Threshold: `|z| ≥ 2.0`
 
-The mean and standard deviation are themselves dragged toward the right tail by the extreme prescribers we're trying to detect. The threshold becomes hard to clear, and the method under-flags. Across our 7.06M providers, **2.08%** are flagged by z-score.
+The mean and standard deviation are themselves dragged toward the right tail by the extreme prescribers we're trying to detect. The threshold becomes hard to clear, and the method under-flags. Across our 7.06M providers, **2.01%** (141,766) are flagged by z-score.
 
 ### Modified z-score (MAD-based)
 
@@ -73,7 +73,7 @@ where $\tilde{x}$ is the peer-group median and $\text{MAD} = \text{median}(|x - 
 
 Threshold: `|z̃| ≥ 3.5` ([Iglewicz & Hoaglin, 1993](https://www.itl.nist.gov/div898/handbook/eda/section3/eda35h.htm))
 
-The constant $0.6745$ scales MAD so that, for a normal distribution, MAD-based z-scores are comparable to classical z-scores. On real (skewed) Medicare data the modified z-score is robust to the tail — the median doesn't budge, MAD stays a measure of typical deviation, and **5.37%** of providers flag. That higher rate is the *correct* answer for a right-skewed population: more providers genuinely deviate from typical.
+The constant $0.6745$ scales MAD so that, for a normal distribution, MAD-based z-scores are comparable to classical z-scores. On real (skewed) Medicare data the modified z-score is robust to the tail — the median doesn't budge, MAD stays a measure of typical deviation, and **5.23%** (369,200) of providers flag. That higher rate is the *correct* answer for a right-skewed population: more providers genuinely deviate from typical.
 
 ### The two-pass MAD computation
 
