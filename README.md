@@ -35,7 +35,7 @@ The MAD method's sensitivity to right-skewed Medicare cost distributions is the 
 | Warehouse | Snowflake (free trial) | XS warehouse, 60s auto-suspend |
 | Auth | RSA key-pair | MFA-exempt; CI-portable |
 | Transformation | dbt Core 1.11 on Python 3.13 | dbt-snowflake 1.11.4 |
-| BI / notebook | Hex (Hobby tier) | Snowflake-native connector |
+| BI / app | Evidence (BI-as-code) | Live `/app`, static from committed extracts; Hex five-tab set is a mockup |
 | Docs | dbt docs static site | [Live on GitHub Pages](https://kristenmartino.github.io/medicare-provider-outliers/), regenerated via `./scripts/build_docs.sh` |
 | Tests | 59 dbt tests (53 schema + 3 singular + 3 unit) | All green |
 | CI | GitHub Actions, offline `dbt parse` | Catches SQL / ref / source breaks without needing warehouse creds in repo secrets |
@@ -98,6 +98,7 @@ Validated on every push via [`.github/workflows/dbt-ci.yml`](./.github/workflows
 ├── scripts/
 │   └── build_docs.sh                   # `dbt docs generate --static` → docs/index.html
 └── docs/                               # Portfolio narrative + static dbt-docs site
+    ├── DECISIONS.md                    # Engineering decision record — why each choice
     ├── findings.md                     # 5 analytical findings with reproducible SQL
     ├── methodology.md                  # Peer-group key, z vs MAD, threshold rationale
     ├── disclaimer.md                   # "Outlier ≠ allegation"; public-data framing
