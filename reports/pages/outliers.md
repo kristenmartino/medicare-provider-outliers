@@ -2,7 +2,16 @@
 title: Outlier Detection
 ---
 
+**The triage shortlist** — providers ranked by how far they sit from their specialty-and-state peers on the metric you pick. A high score is a candidate to investigate, **not** a verdict.
+
 Pick a metric — the table re-queries **instantly in your browser** (DuckDB-WASM, no server round-trip). Sort any column, or search by provider, specialty, or state.
+
+**What the columns mean** (full math + what a flag does *not* mean: [Methodology](/methodology)):
+
+- **Modified z (MAD):** robust distance from the peer-group *median*, `0.6745 × (value − median) / MAD`. Flags at **|z| ≥ 3.5** — unitless, and genuinely huge on skewed spend (the top row's ~134,510 is not a typo).
+- **Peer n:** providers in the same `(NPPES taxonomy × state)` peer group, floored at **n ≥ 30**.
+- **Metric peer n:** how many of those peers have a value for the *selected* metric — a flag requires this ≥ 30, so no provider is scored against a thin median.
+- **Value:** the selected metric — USD totals for `total_drug_cost` / `total_medicare_payment`, counts for claims / services, a 0–1 ratio for `brand_cost_share`.
 
 ```sql metrics
 select distinct metric from medicare.tab2_outliers_top1000 order by metric

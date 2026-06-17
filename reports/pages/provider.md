@@ -4,6 +4,12 @@ title: Provider Drill-Down
 
 A curated set of high-profile outliers. (Full per-NPI lookup over all 7M providers is a live-warehouse feature; this static demo covers six headline cases.)
 
+**What these numbers mean** (full math: [Methodology](/methodology)):
+
+- **Modified-z (drug cost):** how far this provider sits from their `(taxonomy × state)` peer **median**, in robust (MAD) units; **≥ 3.5** is the flag threshold.
+- **Brand cost share:** the share of the provider's Part D drug cost that is brand-name rather than generic (0–1).
+- **Peer group n:** number of providers in the same taxonomy-and-state comparison set.
+
 ```sql providers
 select provider_full_name, specialty, state, city,
        total_drug_cost, mz_drug_cost, part_d_total_claims, brand_cost_share,
