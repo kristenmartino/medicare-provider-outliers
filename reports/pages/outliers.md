@@ -34,7 +34,7 @@ order by abs(modified_z_score) desc
     <Column id=modified_z_score title="Modified z" fmt='#,##0.0'/>
 </DataTable>
 
-The top **`total_drug_cost`** row is **Rushdi Alul** (Emergency Medicine, IL) — $84M in Part D drug cost against a peer-group median that puts his modified z near **134,510**. High Emergency-Medicine scores are typically facility-level prescribing aggregated to one attending NPI — see [Methodology](/methodology).
+The top **`total_drug_cost`** row is an **Emergency Medicine provider in IL** — $84M in Part D drug cost against a peer-group median that puts the modified z near **134,510**. High Emergency-Medicine scores are typically facility-level prescribing aggregated to one attending NPI — see [Methodology](/methodology).
 
 ## Modified-z distribution — {inputs.metric.value}
 

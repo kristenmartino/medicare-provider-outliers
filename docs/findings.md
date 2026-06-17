@@ -8,7 +8,7 @@ Five analytical findings from `mart_provider_outliers` on **CY 2023** data. Each
 
 ## 1. The top "individual" outliers are facility billing in disguise
 
-Of the ~64,500 Emergency Medicine physicians in the mart, the median Part D drug cost is **$692** — Emergency doctors prescribe little outpatient pharmacy. But twelve providers in that specialty have **>$5M each**, and the maximum is **$84M (Rushdi Alul, IL, modified-z = 134,510)**.
+Of the ~64,500 Emergency Medicine physicians in the mart, the median Part D drug cost is **$692** — Emergency doctors prescribe little outpatient pharmacy. But twelve providers in that specialty have **>$5M each**, and the maximum is **$84M (an Emergency Medicine provider in IL, modified-z = 134,510)**.
 
 The signal is consistent: every top-10 individual outlier across specialties is an Emergency Medicine physician with hundred-million-dollar Part D claims. Real outpatient pharmacy spend at that scale by a single ER doctor isn't credible — the pattern strongly suggests facility-level prescribing aggregated to an attending NPI for billing purposes.
 
