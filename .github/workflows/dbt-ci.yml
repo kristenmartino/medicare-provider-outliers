@@ -15,9 +15,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Supersede in-flight runs for the same PULL REQUEST only. Keyed by SHA on
+# push so a main run is never cancelled — cancelling one means that commit's
+# models were never validated, and the cancellation is silent. Cancellation
+# also follows workflow START order rather than commit order, so the run that
+# survives is not necessarily the one carrying the newest code.
 concurrency:
-  group: dbt-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: dbt-ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:
