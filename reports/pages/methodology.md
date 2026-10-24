@@ -38,7 +38,7 @@ A z-score is a unitless number of (robust) standard deviations, not a percentage
 
 Many legitimate patterns produce extreme scores:
 
-- A single attending NPI absorbing **facility-level prescribing** for billing (the dominant pattern in top Emergency-Medicine outliers).
+- **Facility-level prescribing** attributed to one NPI is a possible explanation to investigate, not a pattern verified by these provider aggregates.
 - Sub-specialists sitting in a generic taxonomy code.
 - Providers serving unusually sick panels (oncology, transplant, advanced HIV care).
 

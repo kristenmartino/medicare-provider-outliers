@@ -76,7 +76,7 @@
 
 **Grain "provider × year," 2023 only → effectively one row per provider.** Scoped to one vintage; named `_provider_year` because the schema + loader are built to append vintages. 🔧 No trend analysis yet — documented in `README` limitations; multi-year is the next iteration.
 
-**Filter to individuals (NPPES `entity_type = 1`, Part B `'I'`).** The peer-group analysis compares people within a specialty; org NPIs don't fit that frame. ⚙️ Deliberate scope (and part of why facility-aggregated NPIs surface as artifacts — see `findings.md` §1).
+**Filter to individuals (NPPES `entity_type = 1`, Part B `'I'`).** The peer-group analysis compares people within a specialty; org NPIs don't fit that frame. ⚙️ Deliberate scope; the aggregates do not resolve facility-attribution hypotheses — see `findings.md` §1.
 
 **Reconstruct Part B totals as `avg_per_service × services`, summed.** CMS publishes per-service *averages*, not totals; this is the only route to a provider-level total. ⚙️ Approximation by necessity, clearly commented. Transparency is built in: `total_beneficiaries_naive_sum` is explicitly named "naive" because summing per-HCPCS bene counts double-counts patients.
 
@@ -116,13 +116,13 @@
 
 > Test inventory: **53 generic + 3 singular = 56 data tests**, plus **3 unit tests**. (dbt's manifest counts the 56 as `test` nodes and the 3 unit tests separately.)
 
-**CI = offline `dbt parse` against a stub profile.** Validates SQL, `ref`/`source` lookups, and schema-yml on every push *without* putting Snowflake credentials in repo secrets. 🔧 CI does not build models or run data tests against a warehouse, so "all tests green" is a local claim. Parse catches the cheap, common breakages credential-free; running real tests needs a CI-scoped Snowflake key-pair user — the right next step out of portfolio mode.
+**CI = offline `dbt parse` against a stub profile.** Parses project configuration and declared `ref`/`source` dependencies on every push *without* putting Snowflake credentials in repo secrets. 🔧 CI does not compile executable SQL, validate Snowflake SQL syntax or actual column existence, build models, or execute data/unit tests against a warehouse. The reported passing-test count is a historical local-build claim. Parse catches the cheap, common breakages credential-free; running real tests needs a CI-scoped Snowflake key-pair user — the right next step out of portfolio mode.
 
 **Orchestration: manual `dbt build` (Makefile); GitHub Actions only for parse + Pages deploy.** A solo, annual-cadence project doesn't need a scheduler. ⚙️ Productionizing = dbt Cloud or Airflow/Dagster on a cron, gated by `dbt source freshness`. The project is structured for it.
 
 ## H. Governance, ethics & docs
 
-**Disclaimer ("outlier ≠ allegation") + a substantive Limitations section** (FFS-only, single year, cell suppression, self-reported taxonomy, facility attribution, not comparable to OIG methodologies). This is provider-level public data about named people — responsible framing is mandatory, not decoration. ✅ The facility-billing finding (top "individual" outliers are aggregated NPIs) is the model red-teaming its own output.
+**Disclaimer ("outlier ≠ allegation") + a substantive Limitations section** (FFS-only, single year, cell suppression, self-reported taxonomy, facility attribution, not comparable to OIG methodologies). This is provider-level public data about named people — responsible framing is mandatory, not decoration. ✅ Facility attribution is a hypothesis requiring additional evidence, not a conclusion about the named providers.
 
 **Findings doc with reproducible SQL per claim.** Every headline number is traceable to a query against the marts. ✅ Reproducibility and credibility.
 
