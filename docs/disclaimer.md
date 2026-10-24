@@ -13,7 +13,7 @@ A provider flagged by `mart_provider_outliers.is_outlier_any_mad` is one whose p
 
 Many legitimate, defensible patterns produce extreme outlier scores in this kind of analysis:
 
-- A single attending NPI absorbing facility-level prescribing for billing purposes (the dominant pattern in the top Emergency-Medicine outliers — see [`docs/findings.md`](./findings.md) §1).
+- Facility-level prescribing attributed to one NPI is a possible explanation to investigate, not a pattern verified by this mart — see [`findings.md`](./findings.md) §1.
 - Sub-specialists embedded in a high-cost specialty whose taxonomy code is missing or generic.
 - Providers serving unusually sick patient panels (oncology, transplant, advanced HIV care).
 - Practice consolidation where one NPI becomes the billing identity for a multi-physician group.

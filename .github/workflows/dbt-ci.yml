@@ -1,9 +1,9 @@
 name: dbt CI
 
 # Validates the dbt project on every push and PR using a stub profile so no
-# Snowflake credentials need to live in GitHub Secrets. Catches model SQL
-# syntax errors, broken refs, undeclared sources, and stale schema yml
-# references before they hit the warehouse.
+# Snowflake credentials need to live in GitHub Secrets. Parses project
+# configuration and declared ref/source dependencies. Does not validate
+# Snowflake SQL syntax, inspect warehouse columns, or execute tests.
 #
 # The dbt docs static site is built locally and committed under docs/index.html;
 # GitHub Pages serves it from there. See README "dbt docs" section.
@@ -68,7 +68,7 @@ jobs:
       - name: dbt deps
         run: dbt deps
 
-      - name: dbt parse (full project validation)
+      - name: dbt parse (project metadata and dependency graph)
         run: dbt parse --no-partial-parse
 
       - name: Show parsed manifest summary

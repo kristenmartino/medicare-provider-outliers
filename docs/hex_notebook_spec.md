@@ -346,7 +346,7 @@ where demo_npi = {{demo_npi}}
 
 The histogram config (color by `series`, median annotation line) is unchanged.
 
-The six pre-baked demo NPIs — the documented top drug-cost MAD outliers; the Emergency-Medicine cluster is the facility-billing pattern from [`findings.md`](./findings.md) §1 / [`disclaimer.md`](./disclaimer.md):
+The six pre-baked demo NPIs — the documented top drug-cost MAD outliers; the Emergency-Medicine cluster motivates the unresolved attribution questions in [`findings.md`](./findings.md) §1 / [`disclaimer.md`](./disclaimer.md):
 
 | NPI | Provider | Specialty | State | total_drug_cost | mz_drug_cost |
 |---|---|---|---|---:|---:|

@@ -93,7 +93,7 @@ See [`int_provider__peer_group_stats.sql`](../models/intermediate/int_provider__
 
 - **Outlier ≠ wrongdoing.** A pediatric hematology-oncology specialist on the high end of drug cost for their peer group may be doing exactly the right thing.
 - **Outlier ≠ a recommendation to audit.** The mart sorts providers by deviation; downstream review (clinical context, patient mix, attribution patterns) is required before any action.
-- **Attribution oddities are common in CMS data.** Several top "Emergency Medicine" outliers with hundred-million-dollar Part D drug costs are likely facility-level prescribing aggregated to a single NPI, not a single physician personally writing scripts at that scale.
+- **Attribution is unresolved.** Extreme Part D totals do not identify their cause. Facility-level aggregation is a possible explanation requiring additional evidence; this mart cannot establish personal prescribing behavior or facility attribution.
 - **One year, one snapshot.** The current build covers data year 2023. Multi-year trends — a provider drifting outlier over time — are a natural next iteration.
 
 ## 6. Knobs

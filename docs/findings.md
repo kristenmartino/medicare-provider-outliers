@@ -6,13 +6,13 @@ Five analytical findings from `mart_provider_outliers` on **CY 2023** data. Each
 
 ---
 
-## 1. The top "individual" outliers are facility billing in disguise
+## 1. Extreme provider totals require attribution review
 
 Of the ~64,500 Emergency Medicine physicians in the mart, the median Part D drug cost is **$692** — Emergency doctors prescribe little outpatient pharmacy. But twelve providers in that specialty have **>$5M each**, and the maximum is **$84M (an Emergency Medicine provider in IL, modified-z = 134,510)**.
 
-The signal is consistent: every top-10 individual outlier across specialties is an Emergency Medicine physician with hundred-million-dollar Part D claims. Real outpatient pharmacy spend at that scale by a single ER doctor isn't credible — the pattern strongly suggests facility-level prescribing aggregated to an attending NPI for billing purposes.
+These totals warrant checking source rows, joins, taxonomy assignment, and attribution before drawing a clinical or billing conclusion. Facility-level aggregation is one hypothesis; it has not been established by this analysis. The reported maximum above is $84M, not hundreds of millions, and the specialty-specific query below does not establish a top-ten pattern across all specialties.
 
-**Methodological implication:** outlier flags surface candidates for investigation, not adjudication. A meaningful operationalization would join `mart_provider_outliers` to a "facility prescriber" feature derived from the share of distinct drugs a single NPI accounts for in their HCO, and downweight cases where one NPI sits on >0.5% of a facility's claim volume.
+**Methodological implication:** outlier flags surface candidates for investigation, not adjudication. A follow-up could examine facility relationships and claim attribution using additional data. Neither a facility-volume feature nor a validated threshold for downweighting providers is implemented here.
 
 ```sql
 select provider_full_name, specialty, state, total_drug_cost, mz_drug_cost
