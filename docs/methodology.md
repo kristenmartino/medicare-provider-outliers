@@ -36,17 +36,23 @@ State is a defensible proxy for the market a provider serves while staying coars
 
 ### Why the n ≥ 30 floor
 
-MAD and standard deviation are noisy on small samples. With n < 30, a single high-cost prescriber can collapse the MAD to near-zero, and every other provider in that peer group will look like a 10-sigma outlier. The floor is enforced in [`int_provider__peer_group_stats`](../models/intermediate/int_provider__peer_group_stats.sql) and inherited downstream. 9,490 peer groups (of a theoretical ~865 taxonomies × 50 states) survive — about 22% — covering 7.06M of the 7.21M total providers.
+The project uses a floor of 30 registry providers per taxonomy/state group, with a separate requirement of 30 observed peers for each flagged metric. This is a modeling choice, not a guarantee of stable MAD or standard deviation. Small or zero dispersion can still produce extreme or unavailable scores. The recorded build admits 9,490 groups with 7,062,726 registry providers, including those without observed Part B/D activity.
+
+The build joins 2023 Part B/D utilization to April 2026 NPPES attributes. State prefers NPPES practice state, with Part D/B state fallbacks. Later taxonomy or location changes can affect the peers used to classify earlier utilization. The [source documentation](data_sources.md) records the vintages.
+
+### Population and flag-rate denominators
+
+The [committed summary](../reports/sources/medicare/tab1_overview_kpis.csv) records 1,069,017 Part D prescribers and 1,076,323 Part B providers within the mart. These populations overlap and cannot be added to produce a distinct active-provider count. Headline flag rates divide by **all 7,062,726 mart rows**, not Medicare-active or metric-eligible providers. State rates use every mart row assigned to each state. Missing Medicare observations must not be interpreted as typical activity. See [demo coverage](demo_coverage.md) for exact checks and public extract limits.
 
 ## 3. The metrics
 
-Six metrics, three from Part D and three from Part B, each scored independently:
+Six metrics, four from Part D and two from Part B, each scored independently:
 
 | # | Source | Metric | Why it matters |
 |---|---|---|---|
 | 1 | Part D | `total_drug_cost` | Headline cost number |
 | 2 | Part D | `part_d_total_claims` | Volume — distinguishes high-volume from high-unit-cost prescribers |
-| 3 | Part D | `brand_cost_share` | Brand-vs-generic mix; high brand share with average volume can be the most defensible savings opportunity |
+| 3 | Part D | `brand_cost_share` | Brand-vs-generic cost mix; does not establish substitutability or savings |
 | 4 | Part D | `avg_cost_per_claim` | Per-script economics |
 | 5 | Part B | `total_medicare_payment` | Headline Part B cost |
 | 6 | Part B | `total_services` | Part B volume |
@@ -55,7 +61,7 @@ A provider is flagged if **any** of the six metrics fires (`is_outlier_any_mad`,
 
 ## 4. Z-score vs. modified z-score
 
-Both are computed for every metric. The two are calibrated to flag at roughly comparable rates on a normal distribution — but Medicare cost distributions are heavily right-skewed, and the two methods diverge sharply on real data.
+Both scores are computed for available metrics. The 0.6745 scaling constant aligns score scales under a normal-distribution assumption; it does not make the selected 2.0 and 3.5 thresholds equivalent. The rules have not been calibrated to a labeled review set or to equal false-positive rates.
 
 ### Classical z-score
 
@@ -63,7 +69,7 @@ $$z = \frac{x - \mu}{\sigma}$$
 
 Threshold: `|z| ≥ 2.0`
 
-The mean and standard deviation are themselves dragged toward the right tail by the extreme prescribers we're trying to detect. The threshold becomes hard to clear, and the method under-flags. Across our 7.06M providers, **2.01%** (141,766) are flagged by z-score.
+Mean and standard deviation are sensitive to extreme observations. At the configured cutoff, **2.01%** (141,766) of all 7,062,726 mart rows flag. There is no labeled evaluation establishing how many actionable cases this rule misses.
 
 ### Modified z-score (MAD-based)
 
@@ -73,7 +79,7 @@ where $\tilde{x}$ is the peer-group median and $\text{MAD} = \text{median}(|x - 
 
 Threshold: `|z̃| ≥ 3.5` ([Iglewicz & Hoaglin, 1993](https://www.itl.nist.gov/div898/handbook/eda/section3/eda35h.htm))
 
-The constant $0.6745$ scales MAD so that, for a normal distribution, MAD-based z-scores are comparable to classical z-scores. On real (skewed) Medicare data the modified z-score is robust to the tail — the median doesn't budge, MAD stays a measure of typical deviation, and **5.23%** (369,200) of providers flag. That higher rate is the *correct* answer for a right-skewed population: more providers genuinely deviate from typical.
+Median and MAD are less sensitive to extreme observations than mean and standard deviation. At the configured cutoff, **5.23%** (369,200) of all mart rows flag. This larger set does not establish better detection. Actionable-case recall, false-positive rates, and the preferred method or threshold remain unmeasured.
 
 ### The two-pass MAD computation
 
@@ -94,7 +100,7 @@ See [`int_provider__peer_group_stats.sql`](../models/intermediate/int_provider__
 - **Outlier ≠ wrongdoing.** A pediatric hematology-oncology specialist on the high end of drug cost for their peer group may be doing exactly the right thing.
 - **Outlier ≠ a recommendation to audit.** The mart sorts providers by deviation; downstream review (clinical context, patient mix, attribution patterns) is required before any action.
 - **Attribution is unresolved.** Extreme Part D totals do not identify their cause. Facility-level aggregation is a possible explanation requiring additional evidence; this mart cannot establish personal prescribing behavior or facility attribution.
-- **One year, one snapshot.** The current build covers data year 2023. Multi-year trends — a provider drifting outlier over time — are a natural next iteration.
+- **One utilization year, later registry.** The current build uses 2023 utilization and the April 2026 NPPES snapshot. It does not establish multi-year utilization trends or a provider's 2023 registry attributes.
 
 ## 6. Knobs
 

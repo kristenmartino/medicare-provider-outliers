@@ -4,14 +4,16 @@ title: Outlier Detection
 
 **The triage shortlist** — providers ranked by how far they sit from their specialty-and-state peers on the metric you pick. A high score is a candidate to investigate, **not** a verdict.
 
-Pick a metric — the table re-queries **instantly in your browser** (DuckDB-WASM, no server round-trip). Sort any column, or search by provider, specialty, or state.
+This table contains the **top 1,000 extracted rows per metric**, ranked by absolute modified z-score with at least 30 observed peers. The six metrics have separate lists. Searching or sorting applies only to the selected extract; a missing provider is not evidence that they were unflagged or absent from the warehouse. Full per-NPI lookup is not implemented in this public app.
+
+Pick a metric to query its bundled rows in your browser (DuckDB-WASM). Sort any column, or search the extract by provider, specialty, or state.
 
 **What the columns mean** (full math + what a flag does *not* mean: [Methodology](/methodology)):
 
 - **Modified z (MAD):** robust distance from the peer-group *median*, `0.6745 × (value − median) / MAD`. Flags at **|z| ≥ 3.5** — unitless, and genuinely huge on skewed spend (the top row's ~134,510 is not a typo).
 - **Peer n:** providers in the same `(NPPES taxonomy × state)` peer group, floored at **n ≥ 30**.
 - **Metric peer n:** how many of those peers have a value for the *selected* metric — a flag requires this ≥ 30, so no provider is scored against a thin median.
-- **Value:** the selected metric — USD totals for `total_drug_cost` / `total_medicare_payment`, counts for claims / services, a 0–1 ratio for `brand_cost_share`.
+- **Value:** USD totals for `total_drug_cost` / `total_medicare_payment`, USD per claim for `avg_cost_per_claim`, counts for claims / services, and a percentage for `brand_cost_share` (stored as a 0–1 ratio).
 
 ```sql metrics
 select distinct metric from medicare.tab2_outliers_top1000 order by metric
@@ -39,7 +41,7 @@ order by abs(modified_z_score) desc
     <Column id=state align=center/>
     <Column id=peer_group_n title="Peer n" fmt='#,##0'/>
     <Column id=peer_n_metric title="Metric peer n" fmt='#,##0'/>
-    <Column id=metric_value title="Value" fmt='#,##0'/>
+    <Column id=metric_value title="Value" fmt={inputs.metric.value === 'brand_cost_share' ? '0.0%' : inputs.metric.value === 'avg_cost_per_claim' ? 'usd2' : ['total_drug_cost', 'total_medicare_payment'].includes(inputs.metric.value) ? 'usd0' : '#,##0'}/>
     <Column id=modified_z_score title="Modified z" fmt='#,##0.0'/>
 </DataTable>
 

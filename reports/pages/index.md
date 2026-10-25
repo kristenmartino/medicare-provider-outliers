@@ -2,7 +2,7 @@
 title: Medicare Provider Outliers
 ---
 
-Cost & volume outlier detection across **7.06M** CMS Part D / Part B providers, scored within `(NPPES taxonomy × state)` peer groups using a robust **MAD modified z-score**. Modeled in dbt on Snowflake; this site is served static from committed extracts — no live warehouse.
+Provider cost and volume comparisons using **2023 Medicare Part B/D data** and the **April 2026 NPPES registry**. The mart contains **7,062,726 registry providers** in admitted `(NPPES taxonomy × state)` groups, including providers without a Part B or Part D observation. Modeled in dbt on Snowflake; this site serves committed extracts — no live warehouse.
 
 ```sql kpis
 select
@@ -15,28 +15,30 @@ select
 from medicare.tab1_overview_kpis
 ```
 
-<BigValue data={kpis} value=total_providers_in_mart title="Providers analyzed" fmt='#,##0'/>
+<BigValue data={kpis} value=total_providers_in_mart title="Registry providers in mart" fmt='#,##0'/>
 <BigValue data={kpis} value=flagged_mad title="MAD outliers" fmt='#,##0'/>
 <BigValue data={kpis} value=pct_flagged_mad title="MAD outlier rate" fmt='0.00"%"'/>
 <BigValue data={kpis} value=flagged_zscore title="z-score outliers" fmt='#,##0'/>
 <BigValue data={kpis} value=pct_flagged_zscore title="z-score rate" fmt='0.00"%"'/>
 <BigValue data={kpis} value=part_d_spend_b title="Part D spend ($B)" fmt='usd1'/>
 
-## Who this is for — and why
+## Coverage and denominator
 
-$213B in Part D drug spend and $73B in Part B payments flow through these providers in a single data year. Finding the few hundred-thousand genuinely anomalous ones — without drowning in false positives from skew — is the difference between a usable triage list and noise. Three audiences read the mart differently:
+The committed summary records **1,069,017 Part D prescribers** and **1,076,323 Part B providers** within the mart. These populations overlap; adding them does not give a distinct Medicare-provider count. Part D drug cost totals **$205.7B** and Part B payments **$69.8B** in this extract.
 
-- **Payer & state Medicaid program-integrity teams** — treat a flag as a *triage* signal to combine with their own beneficiary-overlap and audit tooling, then trim the noisy long tail using the per-metric peer-coverage columns.
-- **Healthcare journalists & policy researchers** — start from the ranked table and the state rollup to find defensible, public-data leads worth investigating; the [Methodology](/methodology) disclaimer guides the framing.
-- **Analytics & hiring reviewers** — a worked example of robust outlier detection (MAD vs. classical z) on a real, messy, 43.7M-row public dataset.
+The headline flag rates divide by **all 7,062,726 mart rows**, including registry providers without observed Medicare activity. They are not rates among Medicare-active or metric-eligible providers, and they do not measure detection accuracy. A flag also requires at least 30 observed peers for its metric. State rates use the same all-mart-row basis within each state.
 
-## Robust beats classical on skewed cost data
+## How to explore the snapshot
 
-The MAD method flags **5.23%** of providers versus the z-score's conservative **2.01%** — the right call for right-skewed Medicare spend, where the mean and standard deviation get dragged toward the very tails we're trying to detect.
+The ranked table contains the top 1,000 extracted rows per metric; the provider view contains six selected examples. These controls search the bundled extracts, not the full warehouse. The [source documentation](https://github.com/kristenmartino/medicare-provider-outliers/blob/48b862ff6b216187dbad3d418e0911f60389d515/docs/data_sources.md) records the input vintages. Later registry taxonomy and location attributes classify 2023 utilization, so changes in those attributes can affect peer membership.
+
+## Comparing two scoring rules
+
+At the configured thresholds, MAD flags **5.23%** of mart rows and classical z-score flags **2.01%**. MAD uses the median and median absolute deviation, which are less sensitive to extreme values than the mean and standard deviation. The thresholds also differ: **3.5** for modified z and **2.0** for classical z. No labeled review establishes which rule finds more actionable cases, or either rule's false-positive rate. A larger flagged set does not establish better detection.
 
 Explore:
 
-- **[Outlier Detection](/outliers)** — the parameterized, ranked outlier table
-- **[Provider Drill-Down](/provider)** — a provider against their peer-group distribution
+- **[Outlier Detection](/outliers)** — top 1,000 extracted rows per metric
+- **[Provider Drill-Down](/provider)** — six selected providers and their available peer observations
 - **[Geography](/geography)** — outlier rate by state
 - **[Methodology](/methodology)** — peer groups, z vs MAD, and what a flag does *not* mean

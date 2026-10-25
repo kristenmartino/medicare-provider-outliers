@@ -23,31 +23,19 @@ order by mz_drug_cost desc nulls last limit 10;
 
 ---
 
-## 2. Brand-vs-generic substitution: $24B *theoretical* excess (and why "addressable" is the wrong word)
+## 2. Brand-cost-share gap under a fixed peer-median assumption
 
-For each provider, compare their `brand_cost_share` to their peer-group median. Sum the *excess* — drug cost that would shift to generics if every above-median provider matched their peer median:
+The recorded analysis sums each above-median provider's total drug cost multiplied by the difference between its brand-cost share and the peer-group median. It reports a **$24.4B arithmetic gap** under that fixed-baseline assumption. The recorded largest groups include Internal Medicine in California ($468M) and Physician Assistants in New York ($373M).
 
-**$24.4 billion nationally**. Spread across 1.07M providers (about 11.5% of total Part D spend). The largest absolute opportunity is in **Internal Medicine in California ($468M)** and **Physician Assistants in New York ($373M)**.
+This is a cost-share comparison, not a substitution-cost model, an addressable market, or an upper bound on achievable savings. The input lacks patient-level indications, therapeutic alternatives, prices after a change, and outcomes. Moving a cost share to the peer median does not establish what treatment would change or what it would cost. The gap can organize follow-up questions; it does not establish a provider's intent, inappropriate prescribing, or a financial return.
 
-That number is a defensible **upper bound on the search space**, not a realistic savings projection. Treating brand share as a free dial that can be turned down to median requires four assumptions that don't hold in clinical practice:
-
-1. **Therapeutic substitutability.** A meaningful share of brand prescriptions are for drugs with no generic equivalent (recently-approved molecules, biologics with no biosimilar, narrow-therapeutic-index drugs where bioequivalence isn't a free swap). Those rows of the mart will look like "excess brand" but aren't.
-2. **The peer median is a moving target.** Drag the right tail to median and the median itself shifts down. The $24B over-counts because it pretends the baseline is fixed.
-3. **Patient-level continuity.** Patients stabilized on a brand formulation experience real harm from involuntary substitution in some drug classes (anticonvulsants, immunosuppressants, levothyroxine). Net cost should also include readmissions and emergency visits that we don't observe in this data.
-4. **Causal attribution.** A provider with high brand share might be (a) prescribing more brand than peers would for the same patients — actionable; or (b) attracting a sicker patient panel that genuinely needs brand — not actionable. This dataset can't distinguish those.
-
-What the number IS good for: ranking peer groups by where the *gap* is biggest, so a payer policy team or formulary committee knows where to start asking "what's driving this gap?" rather than "how do we eliminate it?" `analyses/brand_share_opportunity.sql` gives the per-(state × specialty) breakdown for that ranking use case.
-
-```sql
--- See analyses/brand_share_opportunity.sql for the full per-(state × specialty)
--- breakdown. The headline number is a search-space size, not a savings target.
-```
+See `analyses/brand_share_opportunity.sql` for the calculation. The figures remain the historical build's results; no warehouse rerun was performed for this correction.
 
 ---
 
-## 3. NPPES taxonomy peer-grouping cuts spurious flag rates ~30%
+## 3. NPPES taxonomy changes the recorded flag rate
 
-The first iteration of this project used CMS Medicare specialty text and lumped **116,056 providers under "Internal Medicine"** in one peer group. 45% of them flagged via MAD — clearly an over-flag, since the peer group mixed general internists with cardiologists, oncologists, and nephrologists who have wildly different cost baselines.
+The first iteration used CMS Medicare specialty text and grouped **116,056 providers under "Internal Medicine"**. Its recorded MAD flag rate was 45%. That group combined subspecialties with different cost baselines; no labeled review established which flags were false positives.
 
 | Sub-specialty (NPPES taxonomy, CA) | n_providers | Median Part D drug cost |
 |---|---|---|
@@ -60,7 +48,7 @@ The first iteration of this project used CMS Medicare specialty text and lumped 
 | Endocrinology, Diabetes & Metabolism | 884 | **$642k** |
 | Rheumatology | 707 | **$897k** |
 
-Switching the peer-group key to NPPES `primary_taxonomy_code` (865 NUCC codes, mapped via the [`nucc_taxonomy`](../seeds/nucc_taxonomy.csv) seed) dropped the Internal Medicine MAD-flag rate to **31.8%** — still high, but defensible. The general lesson: a peer group is only useful as long as members face the same prescribing economics. Coarse buckets create false-positive outliers; granular buckets surface real ones.
+Switching the key to NPPES `primary_taxonomy_code` changed the recorded Internal Medicine MAD flag rate to **31.8%**. Peer definitions affect the result; the lower rate does not demonstrate a reduction in false positives. Neither taxonomy/state grouping nor the population floor establishes clinical comparability.
 
 ---
 
@@ -71,13 +59,13 @@ Switching the peer-group key to NPPES `primary_taxonomy_code` (865 NUCC codes, m
 | Classical z-score (mean/stddev) | \|z\| ≥ 2.0 | 141,766 | 2.01% |
 | Modified z-score (median/MAD) | \|MAD-z\| ≥ 3.5 | 369,200 | 5.23% |
 
-The methods would flag at comparable rates on a normal distribution. They diverge sharply here because Medicare cost distributions are heavily right-skewed — the few mega-prescribers pull the mean toward themselves and inflate the stddev, making the z-score threshold hard to clear. MAD-based scoring uses the median and median absolute deviation, both robust to the right tail.
+The score scales have a normal-distribution scaling relationship, but the chosen **2.0 and 3.5 thresholds differ**. Mean/standard deviation and median/MAD respond differently to extreme observations. These rates divide by all 7,062,726 registry mart rows, including providers without observed Part B/D activity; they are not detection accuracy or rates among eligible Medicare providers.
 
-In a portfolio-quality outlier model on Medicare-style data, the MAD method is the right default. The mart exposes **both** scores so the Hex notebook can render the contrast and the analyst can pick the threshold that fits the use case (audit triage vs. broad scanning vs. headline-only flagging).
+The public Evidence app uses MAD for its ranked extracts and exposes the recorded classical count for comparison. No labeled evaluation establishes actionable-case recall, false-positive rates, or an optimal method or threshold.
 
 ---
 
-## 5. Geographic flag-rate variation tracks known health-disparity literature
+## 5. Recorded geographic flag-rate variation
 
 | State | MAD-flag rate | Providers in mart |
 |---|---|---|
@@ -89,7 +77,7 @@ In a portfolio-quality outlier model on Medicare-style data, the MAD method is t
 | **AK** | 2.54% | 26,576 |
 | **DC** | 2.11% | 43,885 |
 
-States with higher MAD-flag rates are concentrated in the Southeast — a pattern consistent with the rural-health and Medicare-spending-variation literature (cf. [Dartmouth Atlas](https://www.dartmouthatlas.org/), CMS Geographic Variation reports). The peer-group key already controls for specialty mix; what's left is genuine geographic dispersion in prescribing intensity, brand-vs-generic mix, and service utilization.
+These are descriptive state rates using all registry mart rows as the denominator. Differences can reflect Medicare participation, metric coverage, taxonomy, and patient mix. Grouping scores by taxonomy and state does not standardize the state's aggregate rate for those factors. This analysis neither isolates a geographic cause nor tests agreement with external health-disparity findings.
 
 This is the kind of finding the headline mart enables without any further modeling. A natural Day-22+ project would join in CMS HRR (Hospital Referral Region) or HSA (Health Service Area) shapefiles for sub-state geography.
 

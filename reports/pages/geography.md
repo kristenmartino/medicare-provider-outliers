@@ -2,7 +2,9 @@
 title: Geography
 ---
 
-MAD outlier rate and Medicare spend by provider state — a regional lens for steering audit or reporting attention before drilling into specific peer groups. Outlier rates cluster in the South (MS, AL, TN), a pattern worth pairing with prescribing-norm and patient-mix context before reading anything into it.
+Recorded MAD flag rates and Medicare spend by the provider state assigned in the mart. **The rate denominator is every registry provider in that state's mart rows**, including providers without observed Part B/D activity. Differences can reflect Medicare participation, available metric coverage, taxonomy, and patient mix; this view does not isolate a geographic cause or identify where audits are warranted.
+
+The input pairs 2023 Part B/D utilization with April 2026 NPPES attributes. NPPES practice state is preferred, with Medicare state fields as a fallback. The table includes two-character state/territory codes with more than 1,000 mart rows; the map displays supported US states.
 
 ```sql states
 select
@@ -22,7 +24,7 @@ order by pct_flagged_mad desc
 
 <DataTable data={states} search=true rows=12>
     <Column id=state align=center/>
-    <Column id=n_providers title="Providers" fmt='#,##0'/>
+    <Column id=n_providers title="Registry providers" fmt='#,##0'/>
     <Column id=flagged_mad title="MAD outliers" fmt='#,##0'/>
     <Column id=pct_flagged_mad title="MAD rate %" fmt='0.00'/>
     <Column id=total_part_d_spend title="Part D spend" fmt='usd0'/>
