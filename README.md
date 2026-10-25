@@ -16,12 +16,14 @@ A 3-week portfolio sprint demonstrating an end-to-end modern data stack workflow
 
 ## Headline finding
 
-In the recorded CY 2023 build, of **7.06M providers** with sufficient NPPES coverage for peer benchmarking (`(taxonomy_code × state)` peer groups, n ≥ 30), the marts flag:
+The recorded build joins **2023 Part B/D utilization** to the **April 2026 NPPES registry**. Its **7,062,726 mart rows** include registry providers with neither observed Part B nor Part D activity. The committed summary records 1,069,017 Part D prescribers and 1,076,323 Part B providers; these sets overlap. Against the **all-mart-row denominator**, the configured rules flag:
 
 - **5.23% (369,200)** as outliers via the robust **MAD method**
-- **2.01% (141,766)** via the classical z-score method (conservative — pulled by the same extreme tails it's trying to detect)
+- **2.01% (141,766)** via the classical z-score method
 
-The MAD method's sensitivity to right-skewed Medicare cost distributions is the project's intended workhorse. Top individual outlier in 2023: the highest-billing **Emergency Medicine provider in IL**, with **$84M in Part D drug cost** vs an Emergency-Medicine-in-IL peer-group median of **$577** — a modified-z of 134,510. Facility-level attribution is one possible explanation, but these aggregates do not establish why the value is extreme.
+These are flag rates across registry mart rows, not Medicare-active-provider rates or detection accuracy. The rules use different thresholds (2.0 for classical z, 3.5 for modified z); no labeled evaluation establishes actionable-case recall, false-positive rates, or that the larger flagged set is better. Top drug-cost example ranked by absolute modified z-score: an **Emergency Medicine provider in IL**, with **$84M** against a peer-group median of **$577** — a modified-z of 134,510. Facility-level attribution is one possible explanation, but these aggregates do not establish why the value is extreme.
+
+The public app searches **top-1,000 extracts per metric** and offers **six selected provider examples**, rather than a full-mart lookup. See [demo coverage and verification](docs/demo_coverage.md) for the denominator checks and reproduction commands.
 
 > **"Outlier" is a statistical descriptor, not an allegation.** Every name in this dataset is from the public NPPES registry; every dollar figure is from the public CMS Provider Data Catalog. Defensible patterns (facility-level prescribing aggregated to an attending NPI, sub-specialists in generic taxonomies, oncology panels) produce extreme scores. See [`docs/disclaimer.md`](./docs/disclaimer.md).
 
@@ -139,11 +141,11 @@ For each metric we compute **both** statistics:
 - Classical **z-score**: `(x - mean) / stddev`, threshold `|z| ≥ 2.0`
 - **Modified z-score** (MAD): `0.6745 × (x - median) / MAD`, threshold `|MAD-z| ≥ 3.5` ([Iglewicz & Hoaglin](https://www.itl.nist.gov/div898/handbook/eda/section3/eda35h.htm))
 
-Why both: Medicare cost distributions are heavily right-skewed (a few mega-prescribers per peer group). Classical z-score is pulled toward those tails — its threshold becomes hard to clear, missing genuine outliers. MAD/median is robust to that. The mart exposes both so downstream reports can present the contrast.
+Why both: mean/standard deviation and median/MAD respond differently to extreme observations. The mart exposes both scores at different configured thresholds. The comparison has no labeled reference set, so flag counts cannot establish which rule misses actionable cases or produces fewer false positives.
 
-**Peer-group floor of n ≥ 30** is enforced in `int_provider__peer_group_stats`. Smaller groups produce noisy MAD/stddev that flag too aggressively.
+**Peer-group floor of n ≥ 30** is enforced in `int_provider__peer_group_stats`. It is a modeling choice rather than a guarantee of stable dispersion estimates or valid comparisons.
 
-A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags via the MAD method — that is the default flag in the explorer. **`is_outlier_any_zscore`** is the conservative counterpart.
+A composite **`is_outlier_any_mad`** flag fires if ANY of the six metrics flags via the MAD method — that is the default flag in the explorer. **`is_outlier_any_zscore`** applies the classical rule. Each metric also requires at least 30 observed peers; registry membership alone is not metric coverage.
 
 **Per-metric coverage gates.** A peer group can pass the `n_providers >= 30` union floor with only a handful of actual Part D prescribers, which would leave the Part D median computed over a thin subpopulation. The mart enforces an additional `peer_n_part_d >= 30` (and the analogous `peer_n_part_b`, `peer_n_brand_share`, `peer_n_avg_cost_per_claim`) at flag-computation time so a provider can never be flagged against a per-metric median with fewer than 30 observations. The counts are exposed in the mart so consumers can audit the denominator behind any flag.
 
@@ -159,7 +161,7 @@ The mart is built for three audiences, each of which would consume it differentl
 
 Reasons not to treat these flags as final answers:
 
-- **Medicare fee-for-service only.** The CMS Provider Data Catalog covers FFS Parts B and D. Medicare Advantage (Part C) and Medicaid are entirely absent. A flagged provider whose patient panel skews Medicare Advantage is being benchmarked on a fragment of their actual practice.
+- **Published Part B/D tables only.** The analysis uses the specified CMS provider tables, not a complete patient panel or linked claims history. It does not integrate separate Part C or Medicaid data. Published aggregates and suppression limit what can be inferred about a practice.
 - **One year (CY 2023).** No trend analysis — a provider whose 2023 spend doubled vs 2022 looks identical to a provider whose 2023 spend doubled three years ago. Multi-year requires re-running the loader against multiple `DY*` files; the schema supports it but the current marts are single-vintage.
 - **Cell suppression.** CMS suppresses any (provider × drug) or (provider × HCPCS) cell with fewer than 11 beneficiaries. Low-volume providers will have systematically incomplete metric totals. Brand-vs-generic share for niche prescribers is particularly affected.
 - **NPPES taxonomy is self-reported.** A meaningful share of NPIs declare a generic "physician" taxonomy when they're actually subspecialists, or never update their taxonomy after a fellowship. Peer groups inherit this noise — a sub-specialist tagged under general internal medicine will be benchmarked against generalists.

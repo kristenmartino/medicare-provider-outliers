@@ -14,7 +14,15 @@ For each Medicare provider: are their cost and volume metrics within the range o
 | Geography | **Practice state** (USPS) |
 | Floor | **n ≥ 30 providers** per peer group |
 
-Switching from CMS specialty text to NPPES taxonomy split "Internal Medicine" into 28 subspecialties and dropped its MAD-flag rate from 45% → ~32% — Cardiology ($416k median Part D cost) and Hematology/Oncology ($1.1M) are clearly different populations from general IM ($97k). The `n ≥ 30` floor keeps MAD/σ stable on small samples; **9,490** peer groups survive, covering 7.06M of 7.21M providers.
+The recorded switch from CMS specialty text to NPPES taxonomy split "Internal Medicine" into 28 subspecialties and changed its MAD-flag rate from 45% to 31.8%. That change does not establish a reduction in false positives. The **9,490** admitted groups contain **7,062,726 registry providers**, including providers without observed Part B/D activity. The `n ≥ 30` floor is a modeling choice, not a guarantee of stable estimates or clinically comparable peers.
+
+## Source vintages and coverage
+
+The build combines **2023 Medicare Part B/D utilization** with the **April 2026 NPPES registry**. Taxonomy comes from NPPES; practice state is preferred, with Medicare state fields as a fallback. Later registry attributes classify earlier utilization and can change peer membership. See the [pinned source documentation](https://github.com/kristenmartino/medicare-provider-outliers/blob/48b862ff6b216187dbad3d418e0911f60389d515/docs/data_sources.md).
+
+The summary extract records **1,069,017 Part D prescribers** and **1,076,323 Part B providers** in the mart; those populations overlap. Headline flag rates divide by all mart rows, not just Medicare-active or metric-eligible providers. State rates likewise divide by all mart rows in each state. Missing metrics are not evidence of typical activity.
+
+The public table bundles the top 1,000 rows per metric, and the provider selector contains six examples. Neither offers a full-mart search. No warehouse refresh or labeled detection evaluation was performed for this copy correction.
 
 ## Six metrics
 
@@ -25,8 +33,10 @@ A provider flags if **any** metric fires. Each flag is gated on that metric's *o
 
 ## Classical z-score vs. modified z-score (MAD)
 
-- **Classical z:** `(x − mean) / stddev`, threshold `|z| ≥ 2.0`. The mean and σ are themselves dragged toward the right tail we're hunting, so it under-flags — **2.01%** of providers.
-- **Modified z (MAD):** `0.6745 × (x − median) / MAD`, threshold `|z̃| ≥ 3.5` (Iglewicz & Hoaglin). The median doesn't budge and MAD stays a stable measure of typical deviation, so it flags **5.23%** — the correct answer for a right-skewed population.
+- **Classical z:** `(x − mean) / stddev`, threshold `|z| ≥ 2.0`; **2.01%** of mart rows flag.
+- **Modified z (MAD):** `0.6745 × (x − median) / MAD`, threshold `|z̃| ≥ 3.5`; **5.23%** of mart rows flag. Median/MAD is less sensitive to extreme observations than mean/standard deviation, but skew and small or zero MAD can still produce large scores.
+
+The scaling constant makes the score scales comparable under a normal-distribution assumption; it does not make the **2.0 and 3.5 cutoffs** equivalent. More flags do not demonstrate greater accuracy. No labeled review establishes actionable-case recall, false-positive rates, or an optimal method or threshold.
 
 A z-score is a unitless number of (robust) standard deviations, not a percentage; it can be negative and very large (the top outlier's modified-z is ~134,510).
 

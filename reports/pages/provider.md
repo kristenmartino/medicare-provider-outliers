@@ -2,7 +2,7 @@
 title: Provider Drill-Down
 ---
 
-A curated set of high-profile outliers. (Full per-NPI lookup over all 7M providers is a live-warehouse feature; this static demo covers six headline cases.)
+Six selected examples from the committed extract. This public app does not implement full per-NPI lookup. Absence from this selector says nothing about a provider's flag status.
 
 **What these numbers mean** (full math: [Methodology](/methodology)):
 
@@ -34,7 +34,7 @@ where provider_full_name = '${inputs.who.value}'
 
 ## How extreme versus the peer group?
 
-The selected provider's Part D drug cost against their `(specialty × state)` peer group, bucketed by cost band. Most peers cluster in the low bands; this provider sits alone in the far-right band — the extreme right-skew the MAD modified-z is designed to catch. (A plain linear histogram is unreadable here: ~all peers collapse into one bar near $0 while a lone outlier stretches the axis to tens of millions.)
+The chart groups available Part D drug-cost observations from the selected example's specialty and state into cost bands. Its counts include the selected provider when present and exclude missing drug costs; they need not equal the full registry peer-group count above. The selected provider is not guaranteed to occupy a band alone. These totals do not establish why a provider's cost differs.
 
 ```sql cost_bands
 with peers as (
